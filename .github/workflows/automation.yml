@@ -2,7 +2,7 @@ name: Medium Automation
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # every 6 hours
+    - cron: "0 */6 * * *"   # runs every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm install playwright
-          npm install fs
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
 
       - name: Run automation script
         env:
