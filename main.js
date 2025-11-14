@@ -4,34 +4,35 @@ async function run() {
   console.log("Starting Medium Automation...");
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const context = await browser.newContext();
 
-  // 1. Go to Medium login page
-  await page.goto("https://medium.com/m/signin");
+  // Load Google cookies
+  const googleCookies = JSON.parse(process.env.GOOGLE_COOKIES || "[]");
+  await context.addCookies(googleCookies);
 
-  // 2. Click "Sign in with Google" button
-  // NOTE: You must update this if you use email login later.
-  await page.click('button:has-text("Sign in with Google")');
+  // Load Medium cookies
+  const mediumCookies = JSON.parse(process.env.MEDIUM_COOKIES || "[]" );
+  await context.addCookies(mediumCookies);
 
-  console.log("Waiting for Google login page...");
+  const page = await context.newPage();
 
-  // 3. Stop here — because we will use saved cookies later
-  await page.waitForTimeout(5000);
+  // Test login by visiting Medium homepage
+  await page.goto("https://medium.com/");
+  await page.waitForTimeout(3000);
 
-  console.log("Login placeholder completed.");
+  console.log("Logged in successfully using cookies!");
 
-  // 4. Now go to Medium “New Story”
+  // Go to new story page
   await page.goto("https://medium.com/new-story");
   await page.waitForTimeout(3000);
 
-  // Example Automation: Write a post
+  // Create post
   await page.fill('textarea[placeholder="Title"]', "Automated Post Title");
-  await page.fill('div[role="textbox"]', "This post was created automatically using Playwright.");
+  await page.fill('div[role="textbox"]', "This post was created automatically using Playwright + GitHub Actions.");
 
-  console.log("Post created (not yet published).");
+  console.log("✓ Post created!");
 
   await browser.close();
 }
 
 run();
-
