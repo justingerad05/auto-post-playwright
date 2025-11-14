@@ -1,6 +1,8 @@
 name: Medium Automation
 
 on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -8,19 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 18
 
-      - name: Install Playwright
+      - name: Install dependencies
         run: |
-          npm init -y
           npm install playwright
+          npm install fs
 
-      - name: Run Automation
+      - name: Run automation script
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          GOOGLE_COOKIES: ${{ secrets.GOOGLE_COOKIES }}
         run: node main.js
-
