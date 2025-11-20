@@ -6,8 +6,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-    MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+    env: MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
     steps:
     - name: Checkout repo
