@@ -3,7 +3,7 @@ import fs from "fs";
 
 async function postToMedium({ title, html }) {
   // Load Medium cookies
-  const cookies = JSON.parse(fs.readFileSync("medium-cookies.json", "utf8"));
+  const cookies = JSON.parse(process.env.MEDIUM_COOKIES);
 
   const browser = await chromium.launch({
     headless: true,        // Change to false if you want to watch it
