@@ -1,56 +1,62 @@
-const fs = require("fs");
-const path = require("path");
-const { chromium } = require("playwright");
+import { chromium } from "playwright";
+import fs from "fs";
 
-async function run() {
-  console.log("=== Medium test automation start ===");
-
-  const cookiePath = path.join(__dirname, "cookies", "medium.json");
-
-  if (!fs.existsSync(cookiePath)) {
-    throw new Error("cookies/medium.json not found.");
-  }
-
-  // Load cookies & validate JSON
-  let cookieData = JSON.parse(fs.readFileSync(cookiePath, "utf8"));
-
-  if (!cookieData.cookies || !Array.isArray(cookieData.cookies)) {
-    throw new Error("cookies/medium.json must contain { cookies: [] }");
-  }
-
-  console.log(`Loaded ${cookieData.cookies.length} cookies.`);
+async function postToMedium({ title, html }) {
+  // Load Medium cookies
+  const cookies = JSON.parse(fs.readFileSync("medium-cookies.json", "utf8"));
 
   const browser = await chromium.launch({
-    headless: true
+    headless: true,        // Change to false if you want to watch it
   });
 
-  const context = await browser.newContext({});
-
-  // Apply cookies
-  await context.addCookies(cookieData.cookies);
-  console.log("Cookies added to browser context.");
+  const context = await browser.newContext();
+  await context.addCookies(cookies);
 
   const page = await context.newPage();
 
-  try {
-    console.log("Navigating to https://medium.com/me to check login status...");
-    await page.goto("https://medium.com/me", { timeout: 120000, waitUntil: "networkidle" });
+  // 1. Go to Medium homepage (should load you as logged in)
+  await page.goto("https://medium.com/");
+  await page.waitForTimeout(3000);
 
-    await page.waitForTimeout(5000);
+  // 2. Navigate to the Medium editor
+  await page.goto("https://medium.com/new-story");
+  await page.waitForSelector("section");
 
-    const url = page.url();
+  // 3. Type title
+  await page.click("h1");
+  await page.keyboard.type(title);
+  await page.waitForTimeout(1000);
 
-    if (url.includes("medium.com/me")) {
-      console.log("LOGIN SUCCESSFUL. Cookies are working.");
-    } else {
-      console.log("LOGIN FAILED — Medium redirected somewhere else:", url);
-    }
+  // 4. Paste HTML as story body
+  await page.click("section");
+  await page.keyboard.insertText(" "); // ensure cursor placed
 
-  } catch (err) {
-    console.error("ERROR during automation:", err.message);
-  }
+  // Use JS to inject the HTML directly
+  await page.evaluate((content) => {
+    const editor = document.querySelector("section");
+    editor.innerHTML = content;
+  }, html);
+
+  await page.waitForTimeout(1500);
+
+  // 5. Click Publish
+  await page.click('button:has-text("Publish")');
+  await page.waitForSelector('button:has-text("Publish now")');
+
+  await page.click('button:has-text("Publish now")');
+
+  // 6. Wait for final URL
+  await page.waitForNavigation();
+  const finalUrl = page.url();
+
+  console.log("Published:", finalUrl);
 
   await browser.close();
+  return finalUrl;
 }
 
-run();
+// Example usage:
+postToMedium({
+  title: "Test Story From Playwright",
+  html: "<h1>Hello Medium</h1><p>This is a Playwright test post.</p>"
+});
