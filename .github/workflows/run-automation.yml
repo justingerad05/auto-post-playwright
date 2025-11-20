@@ -6,16 +6,21 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
 
-      - run: npm install
+    - name: Install dependencies
+      run: npm install
 
-      - run: npm start
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    - name: Run automation
+      run: npm start
