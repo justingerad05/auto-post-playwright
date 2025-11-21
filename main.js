@@ -1,62 +1,28 @@
-import { chromium } from "playwright";
-import fs from "fs";
+// Go to Medium new story page
+await page.goto("https://medium.com/new", { waitUntil: "networkidle" });
 
-async function postToMedium({ title, html }) {
-  // Load Medium cookies
-  const cookies = JSON.parse(process.env.MEDIUM_COOKIES);
+// Wait for editor root to load
+await page.waitForSelector('div[data-testid="editor"]', { timeout: 60000 });
 
-  const browser = await chromium.launch({
-    headless: true,        // Change to false if you want to watch it
-  });
+// Click title area
+await page.click('textarea[data-testid="post-title-input"]');
+await page.keyboard.type("Test Automation Story from Playwright");
 
-  const context = await browser.newContext();
-  await context.addCookies(cookies);
+// Click body area
+await page.click('div[data-testid="wysiwyg-wrapper"] div');
+await page.keyboard.type("This is a test story published automatically using Playwright.");
 
-  const page = await context.newPage();
+// Wait for auto-save
+await page.waitForTimeout(5000);
 
-  // 1. Go to Medium homepage (should load you as logged in)
-  await page.goto("https://medium.com/");
-  await page.waitForTimeout(3000);
+// Open publish panel
+await page.click('button[data-testid="publishButton"]');
 
-  // 2. Navigate to the Medium editor
-  await page.goto("https://medium.com/new-story");
-  await page.waitForSelector("section");
+// Wait for publish modal
+await page.waitForSelector('button[data-testid="publishStoryButton"]', { timeout: 30000 });
 
-  // 3. Type title
-  await page.click("h1");
-  await page.keyboard.type(title);
-  await page.waitForTimeout(1000);
+// Publish
+await page.click('button[data-testid="publishStoryButton"]');
 
-  // 4. Paste HTML as story body
-  await page.click("section");
-  await page.keyboard.insertText(" "); // ensure cursor placed
-
-  // Use JS to inject the HTML directly
-  await page.evaluate((content) => {
-    const editor = document.querySelector("section");
-    editor.innerHTML = content;
-  }, html);
-
-  await page.waitForTimeout(1500);
-
-  // 5. Click Publish
-  await page.click('button:has-text("Publish")');
-  await page.waitForSelector('button:has-text("Publish now")');
-
-  await page.click('button:has-text("Publish now")');
-
-  // 6. Wait for final URL
-  await page.waitForNavigation();
-  const finalUrl = page.url();
-
-  console.log("Published:", finalUrl);
-
-  await browser.close();
-  return finalUrl;
-}
-
-// Example usage:
-postToMedium({
-  title: "Test Story From Playwright",
-  html: "<h1>Hello Medium</h1><p>This is a Playwright test post.</p>"
-});
+// Wait for redirect
+await page.waitForNavigation({ timeout: 60000 });
