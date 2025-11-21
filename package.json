@@ -1,13 +1,12 @@
 {
   "name": "auto-post-playwright",
   "version": "1.0.0",
-  "description": "Stable Medium auto-post via Playwright using cookies",
-  "main": "main.js",
+  "description": "Medium test posting with Playwright (reads cookies from secret)",
+  "main": "main.cjs",
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.cjs"
   },
   "dependencies": {
-    "playwright": "^1.49.0",
-    "fs-extra": "^11.2.0"
+    "playwright": "^1.49.1"
   }
 }
