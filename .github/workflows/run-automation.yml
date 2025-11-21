@@ -1,28 +1,33 @@
-name: run-automation
+name: Run Medium Test Post
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:    # manual trigger in Actions UI
+  push:
+    branches:
+      - main
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
 
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps
 
-    - name: Run automation
-      run: npm start
+      - name: Run automation
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          node main.cjs
