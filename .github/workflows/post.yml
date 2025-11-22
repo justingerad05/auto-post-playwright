@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  run-medium-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Node
@@ -16,11 +17,34 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      - name: Install Playwright deps
+        run: |
+          npx playwright install-deps
+          npx playwright install chromium
+
+      - name: Install packages
         run: npm install
 
-      - name: Run Automation
+      - name: Run automation
         env:
           BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm start
+
+          # Playwright anti-crash flags for Browserless:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        run: |
+          echo "Starting Medium automation..."
+          # Disable sandbox to avoid CDP disconnects
+          export PLAYWRIGHT_BROWSERS_PATH=0
+          export PW_CHROMIUM_NO_SANDBOX=1
+          
+          # Retry logic for Cloudflare sudden drops
+          n=0
+          until [ $n -ge 3 ]
+          do
+            npm start && break
+            echo "Retry $n failed… waiting 5 seconds"
+            n=$((n+1))
+            sleep 5
+          done
