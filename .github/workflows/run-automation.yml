@@ -1,32 +1,30 @@
 name: Run Medium Test Post
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 */6 * * *" # optional — runs every 6 hours
 
 jobs:
   run:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Install deps
-        run: npm ci
+      - name: Install dependencies
+        run: npm install
 
       - name: Run Medium automation
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-          MEDIUM_COOKIES_B64: ${{ secrets.MEDIUM_COOKIES_B64 }}
-        run: |
-          npm start
+          MEDIUM_COOKIES_B64: ""
+        run: npm start
 
-      - name: Upload screenshot artifact (if any)
+      - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
