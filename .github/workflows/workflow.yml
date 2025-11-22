@@ -1,27 +1,45 @@
+name: Run Medium Test Post
+
+on:
+  workflow_dispatch: {}
+
 jobs:
   run-medium-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
 
+      # Use npm ci if you have a lockfile; otherwise npm install prevents the "npm ci" error.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Run Medium Test Post
-        id: medium
-        continue-on-error: true
-        run: node main.mjs
+        id: run-post
+        env:
+          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
+          # Put your playwrighter-approved cookie JSON (or base64) into this secret
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          # if you use base64, you can also pass MEDIUM_COOKIES_B64: ${{ secrets.MEDIUM_COOKIES_B64 }}
+        run: |
+          echo "=== Starting Medium automation ==="
+          node main.mjs
 
-      # Upload debug artifacts for ANY failure
+      # Always try to collect debug artifacts when job fails
       - name: Upload debug artifacts
-        if: failure() || steps.medium.outcome == 'failure'
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: medium-debug
