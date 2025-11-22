@@ -5,7 +5,7 @@ dotenv.config();
 
 const { chromium } = playwright;
 
-// Normalize cookies into Playwright format
+// Normalize cookies into proper Playwright storageState
 function normalizeCookies(inputString) {
   let parsed;
 
@@ -15,35 +15,25 @@ function normalizeCookies(inputString) {
     throw new Error("MEDIUM_COOKIES is not valid JSON.");
   }
 
-  // CASE 1: Already storageState
   if (parsed.cookies && Array.isArray(parsed.cookies)) {
     return parsed;
   }
 
-  // CASE 2: Already array of cookies
   if (Array.isArray(parsed)) {
-    return {
-      cookies: parsed,
-      origins: []
-    };
+    return { cookies: parsed, origins: [] };
   }
 
-  // CASE 3: Single cookie object
   if (typeof parsed === "object") {
-    return {
-      cookies: [parsed],
-      origins: []
-    };
+    return { cookies: [parsed], origins: [] };
   }
 
-  throw new Error("Unrecognized cookie format for MEDIUM_COOKIES");
+  throw new Error("Unrecognized cookie structure in MEDIUM_COOKIES.");
 }
 
 async function postToMedium() {
   console.log("=== Medium Automation Start ===");
 
-  const BROWSERLESS_API_KEY = process.env.BROWSERLESS_API_KEY;
-  const MEDIUM_COOKIES = process.env.MEDIUM_COOKIES;
+  const { BROWSERLESS_API_KEY, MEDIUM_COOKIES } = process.env;
 
   if (!BROWSERLESS_API_KEY) throw new Error("Missing BROWSERLESS_API_KEY");
   if (!MEDIUM_COOKIES) throw new Error("Missing MEDIUM_COOKIES");
@@ -57,25 +47,32 @@ async function postToMedium() {
   const storageState = normalizeCookies(MEDIUM_COOKIES);
 
   const context = await browser.newContext({
-    storageState
+    storageState,
+    ignoreHTTPSErrors: true,
   });
 
   const page = await context.newPage();
 
   console.log("Opening Medium editor...");
   await page.goto("https://medium.com/new-story", {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
+    timeout: 60000
   });
 
-  console.log("Typing test post...");
+  // Wait for the editor to load
+  console.log("Waiting for editor...");
+  await page.waitForSelector('div[data-testid="storyTitle"]', { timeout: 60000 });
+
+  // Type a test post
+  console.log("Typing into editor...");
   await page.keyboard.type(
-    "Automated Medium Test — Browserless + GitHub Actions working!",
-    { delay: 20 }
+    "This is a Medium automated test post using Browserless & GitHub Actions!",
+    { delay: 30 }
   );
 
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
 
-  console.log("Done. Closing browser.");
+  console.log("Closing browser.");
   await browser.close();
 }
 
