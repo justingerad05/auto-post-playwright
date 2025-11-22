@@ -21,12 +21,11 @@ jobs:
       - name: Run Medium automation
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-          MEDIUM_COOKIES_B64: ""
         run: npm start
 
       - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: medium-screenshot
-          path: medium-post-result.png
+          name: medium-test-result
+          path: medium-test-result.png
