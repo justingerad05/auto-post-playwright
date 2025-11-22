@@ -1,5 +1,4 @@
-jobs:
-  run-medium-post:
+run-medium-post:
     runs-on: ubuntu-latest
 
     steps:
