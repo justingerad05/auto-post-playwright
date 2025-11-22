@@ -1,5 +1,4 @@
-// main.cjs
-import fs from "fs";
+// main.mjs
 import playwright from "playwright";
 import dotenv from "dotenv";
 dotenv.config();
@@ -19,7 +18,7 @@ async function postToMedium() {
     throw new Error("Missing MEDIUM_COOKIES environment variable!");
   }
 
-  console.log("Connecting to Browserless CDP...");
+  console.log("Connecting to Browserless via WebSocket...");
 
   const browser = await chromium.connectOverCDP(
     `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}`
@@ -31,28 +30,18 @@ async function postToMedium() {
 
   const page = await context.newPage();
 
-  console.log("Loading Medium...");
-
+  console.log("Loading Medium new story...");
   await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
 
-  console.log("Medium page loaded.");
-
-  await page.waitForTimeout(3000);
-
+  console.log("Typing into editor...");
   await page.keyboard.type(
-    "This is an automated test post. Automation working successfully!",
-    { delay: 30 }
+    "Automated test post — Browserless + Playwright working!",
+    { delay: 20 }
   );
 
   await page.waitForTimeout(2000);
 
-  console.log("Trying to publish...");
-
-  await page.keyboard.press("Control+Shift+P");
-  await page.waitForTimeout(3000);
-
-  console.log("Done. Closing browser.");
-
+  console.log("Automation complete. Closing.");
   await browser.close();
 }
 
