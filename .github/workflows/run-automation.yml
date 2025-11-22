@@ -1,16 +1,19 @@
 name: Run Medium Test Post
+
 on:
   workflow_dispatch:
+  # optional scheduled run; uncomment if you want daily tests
+  # schedule:
+  #   - cron: '0 9 * * *'
 
 jobs:
   run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
@@ -18,17 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Medium automation
+      - name: Run Medium test (Browserless)
         env:
+          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm start
-
-      - name: Upload screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: medium-test-result
-          path: medium-test-result.png
+        run: |
+          npm start
