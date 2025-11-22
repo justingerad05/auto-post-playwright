@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "main": "main.mjs",
+  "dependencies": {
+    "playwright": "1.45.0",
+    "dotenv": "^16.4.1"
+  },
   "scripts": {
     "start": "node main.mjs"
-  },
-  "dependencies": {
-    "playwright": "^1.46.0",
-    "dotenv": "^16.4.1"
   }
 }
