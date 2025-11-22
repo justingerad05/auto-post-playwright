@@ -1,50 +1,31 @@
-name: Run Medium Test Post
-
-on:
-  workflow_dispatch:
-
 jobs:
   run-medium-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
-      - name: Install Playwright deps
-        run: |
-          npx playwright install-deps
-          npx playwright install chromium
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Install packages
-        run: npm install
+      - name: Run Medium Test Post
+        id: medium
+        continue-on-error: true
+        run: node main.mjs
 
-      - name: Run automation
-        env:
-          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-
-          # Playwright anti-crash flags for Browserless:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
-          NODE_OPTIONS: "--max_old_space_size=4096"
-        run: |
-          echo "Starting Medium automation..."
-          # Disable sandbox to avoid CDP disconnects
-          export PLAYWRIGHT_BROWSERS_PATH=0
-          export PW_CHROMIUM_NO_SANDBOX=1
-          
-          # Retry logic for Cloudflare sudden drops
-          n=0
-          until [ $n -ge 3 ]
-          do
-            npm start && break
-            echo "Retry $n failed… waiting 5 seconds"
-            n=$((n+1))
-            sleep 5
-          done
+      # Upload debug artifacts for ANY failure
+      - name: Upload debug artifacts
+        if: failure() || steps.medium.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-debug
+          path: |
+            debug-screenshot.png
+            page-content.html
+          if-no-files-found: ignore
