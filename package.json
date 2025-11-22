@@ -1,12 +1,13 @@
 {
   "name": "auto-post-playwright",
   "version": "1.0.0",
-  "description": "Medium test poster using Browserless + Playwright Core",
+  "type": "module",
   "main": "main.cjs",
   "scripts": {
     "start": "node main.cjs"
   },
   "dependencies": {
-    "playwright-core": "^1.49.1"
+    "playwright": "^1.46.0",
+    "dotenv": "^16.4.1"
   }
 }
