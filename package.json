@@ -1,8 +1,7 @@
 {
   "name": "auto-post-playwright",
   "version": "1.0.0",
-  "description": "Medium test posting with Playwright (reads cookies from secret)",
-  "main": "main.cjs",
+  "type": "commonjs",
   "scripts": {
     "start": "node main.cjs"
   },
