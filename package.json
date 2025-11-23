@@ -6,7 +6,7 @@
     "start": "node main.mjs"
   },
   "dependencies": {
-    "playwright": "^1.49.1",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.4.5",
+    "playwright": "^1.44.0"
   }
 }
