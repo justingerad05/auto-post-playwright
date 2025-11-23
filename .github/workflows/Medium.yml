@@ -1,0 +1,28 @@
+name: Run Medium Test Post
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-medium-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Medium automation
+        env:
+          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          echo "=== Starting Medium automation ==="
+          npm start
