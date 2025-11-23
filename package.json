@@ -2,12 +2,11 @@
   "name": "auto-post-playwright",
   "version": "1.0.0",
   "type": "module",
-  "main": "main.mjs",
-  "dependencies": {
-    "playwright": "1.45.0",
-    "dotenv": "^16.4.1"
-  },
   "scripts": {
     "start": "node main.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.1",
+    "dotenv": "^16.0.0"
   }
 }
