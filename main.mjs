@@ -31,15 +31,16 @@ async function waitForMediumEditor(page) {
     '[role="textbox"]'
   ];
 
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 30; i++) {
     for (const sel of selectors) {
       const found = await page.$(sel);
       if (found) {
-        console.log(`Editor detected via selector: ${sel}`);
+        console.log(`Editor detected via: ${sel}`);
         return sel;
       }
     }
-    console.log("Editor not loaded yet… retrying");
+
+    console.log("Editor not ready… retrying");
     await page.waitForTimeout(1500);
   }
 
@@ -50,20 +51,25 @@ async function postToMedium() {
   console.log("=== Medium Automation Start ===");
 
   const { BROWSERLESS_API_KEY, MEDIUM_COOKIES } = process.env;
+
   if (!BROWSERLESS_API_KEY) throw new Error("Missing BROWSERLESS_API_KEY");
   if (!MEDIUM_COOKIES) throw new Error("Missing MEDIUM_COOKIES");
 
   const storageState = normalizeCookies(MEDIUM_COOKIES);
   console.log(`Loaded ${storageState.cookies.length} cookies.`);
 
-  // ✔ Best option for YOU = chrome.browserless.io (higher stability)
-  const WS = `wss://chrome.browserless.io?token=${BROWSERLESS_API_KEY}`;
+  // ✔ NEW REQUIRED ENDPOINT (working)
+  const WS = `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}`;
+
+  console.log("Connecting to Browserless:", WS);
 
   const browser = await chromium.connectOverCDP(WS);
-  const context = await browser.newContext({ storageState });
+  console.log("Connected successfully!");
 
+  const context = await browser.newContext({ storageState });
   const page = await context.newPage();
-  await page.setViewportSize({ width: 1400, height: 900 });
+
+  await page.setViewportSize({ width: 1500, height: 900 });
 
   console.log("Opening Medium editor...");
   await page.goto("https://medium.com/new-story", {
@@ -74,14 +80,14 @@ async function postToMedium() {
   console.log("Waiting for editor...");
   const editorSelector = await waitForMediumEditor(page);
 
-  console.log("Typing test content...");
+  console.log("Typing...");
   await page.click(editorSelector);
   await page.keyboard.type(
-    "This is an automated Medium test post from Browserless + Playwright!",
+    "Automated Medium post test using the new Browserless production-sfo WebSocket endpoint!",
     { delay: 20 }
   );
 
-  console.log("Done. Closing…");
+  console.log("Done. Closing browser.");
   await browser.close();
 }
 
