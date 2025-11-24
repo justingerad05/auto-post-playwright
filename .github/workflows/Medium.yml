@@ -1,4 +1,5 @@
-name: Run Medium Test Post
+name: Run Medium Post
+
 on:
   workflow_dispatch:
 
@@ -6,27 +7,22 @@ jobs:
   run-medium-post:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
-      - name: Install dependencies
-        run: |
-          npm ci || npm install
-          # Playwright browsers are not required for browserless CDP, but install helpers
-          npx playwright install --with-deps || true
+      - name: Install deps
+        run: npm ci
 
       - name: Run Medium automation
         env:
-          # Add these secrets to your repository secrets
           BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
           BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS }}
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}  # prefer base64-encoded JSON
-          USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36"
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          USER_AGENT: ${{ secrets.USER_AGENT }}
         run: |
           echo "=== Starting Medium automation ==="
-          node main.mjs
+          npm start
