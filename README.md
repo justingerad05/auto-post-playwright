@@ -1,15 +1,19 @@
 # auto-post-playwright
 
-Automated Medium posting using Playwright.
+Files:
+- main.mjs : Main automation
+- package.json
+- .github/workflows/run-medium-post.yml
 
-## How to use
+Secrets to set in GitHub:
+- BROWSERLESS_API_KEY  (or BROWSERLESS_WS if you prefer full ws URL)
+- BROWSERLESS_WS       (optional; if set, used instead of API key)
+- MEDIUM_COOKIES       (cookies JSON or base64(JSON))
+- USER_AGENT           (optional; defaults to a modern Chrome UA)
 
-1. Upload this repository (or import the ZIP) to GitHub.
-2. Add repository secrets (Settings → Secrets → Actions):
-   - `MEDIUM_COOKIES` : JSON string (or base64 JSON) containing your Medium cookies object.
-   - `PROXY_URL` (optional) : e.g. http://username:password@host:port or host:port
-3. Actions → Run Medium Test Post → Run workflow (workflow_dispatch).
+How to format MEDIUM_COOKIES:
+- You may paste a JSON object with "cookies": [ ... ].
+- Example file `medium-cookies.json` is included in README for format.
 
-## Notes
-- If Cloudflare blocks, use a residential proxy (PROXY_URL) or Browserless remote Chrome.
-- This is a starting point — you may need to tweak selectors for your Medium account UI.
+Debug:
+- The script will copy local debug screenshots if possible and logs the uploaded debug screenshot path: /mnt/data/medium-test-result.png
