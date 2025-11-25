@@ -1,11 +1,14 @@
 {
-  "name": "auto-post-playwright",
+  "name": "medium-auto-post",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "node main.mjs"
   },
   "dependencies": {
-    "playwright": "^1.44.0"
+    "playwright-core": "^1.45.0",
+    "fingerprint-generator": "^2.1.9",
+    "fingerprint-injector": "^2.1.9",
+    "ua-parser-js": "^1.0.37"
   }
 }
