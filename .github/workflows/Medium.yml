@@ -22,17 +22,25 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
+      - name: FIX NPM CACHE CORRUPTION
+  run: |
+    echo "Removing NPM cache (fix corrupted tarball issue)..."
+    npm cache clean --force
+    rm -rf ~/.npm/_cacache
 
-      - name: Install dependencies (try ci, fallback to install)
-        run: |
-          set -e
-          if [ -f package-lock.json ]; then
-            echo "package-lock.json found -> using npm ci"
-            npm ci --no-audit --prefer-offline || ( echo "npm ci failed -> falling back to npm install" && npm install --no-audit --prefer-offline )
-          else
-            echo "No package-lock.json -> using npm install"
-            npm install --no-audit --prefer-offline
-          fi
+      - name: Install Dependencies (Clean)
+  run: |
+    echo "Cleaning npm cache to fix EINTEGRITY..."
+    npm cache clean --force
+    rm -rf ~/.npm/_cacache
+
+    if [ -f package-lock.json ]; then
+      echo "package-lock.json found → using npm ci"
+      npm ci --no-audit --prefer-offline || (echo "npm ci failed → fallback to npm install" && npm install --no-audit)
+    else
+      echo "No package-lock.json → using npm install"
+      npm install --no-audit
+    fi
 
       - name: Run Medium automation
         env:
