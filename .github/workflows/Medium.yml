@@ -1,11 +1,31 @@
-name: Run Medium Post
+name: Run Medium Post (manual)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   run-medium-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Required (at least one of BROWSERLESS_WS or BROWSERLESS_API_KEY)
+      BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS || '' }}
+      BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY || '' }}
+
+      # Required: your Medium cookies (JSON or base64(JSON))
+      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES || '' }}
+
+      # Optional: user agent override (if empty, a default is used by the script)
+      USER_AGENT: ${{ secrets.USER_AGENT || '' }}
+
+      # Optional fingerprint or other helper secrets (only if you plan to use them)
+      MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT || '' }}
+      MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML || '' }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -22,33 +42,28 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      - name: FIX NPM CACHE CORRUPTION
-  run: |
-    echo "Removing NPM cache (fix corrupted tarball issue)..."
-    npm cache clean --force
-    rm -rf ~/.npm/_cacache
 
-      - name: Install Dependencies (Clean)
-  run: |
-    echo "Cleaning npm cache to fix EINTEGRITY..."
-    npm cache clean --force
-    rm -rf ~/.npm/_cacache
-
-    if [ -f package-lock.json ]; then
-      echo "package-lock.json found → using npm ci"
-      npm ci --no-audit --prefer-offline || (echo "npm ci failed → fallback to npm install" && npm install --no-audit)
-    else
-      echo "No package-lock.json → using npm install"
-      npm install --no-audit
-    fi
+      - name: Install dependencies (ci -> install fallback)
+        run: |
+          set -e
+          if [ -f package-lock.json ]; then
+            echo "package-lock.json found -> using npm ci"
+            npm ci --no-audit --prefer-offline --no-fund || (echo "npm ci failed -> falling back to npm install" && npm install --no-audit --prefer-offline --no-fund)
+          else
+            echo "No package-lock.json -> using npm install"
+            npm install --no-audit --prefer-offline --no-fund
+          fi
 
       - name: Run Medium automation
-        env:
-          BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS }}
-          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-          MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT }}
-          USER_AGENT: ${{ secrets.USER_AGENT }}
-        run: |
-          echo "=== Starting Medium automation ==="
-          node main.mjs
+        # If you expect browserless to be used, make sure secrets are set.
+        run: node main.mjs
+
+      - name: Upload debug screenshots (if created)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-debug-screenshots
+          path: |
+            /tmp/error-medium.png
+            /tmp/cf-challenge.png
+            /tmp/error-medium-*.png
