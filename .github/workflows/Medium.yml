@@ -1,69 +1,59 @@
 name: Run Medium Post (manual)
 
 on:
-  workflow_dispatch: {}
-
-permissions:
-  contents: read
-  actions: write
+  workflow_dispatch:
 
 jobs:
   run-medium-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      # Required (at least one of BROWSERLESS_WS or BROWSERLESS_API_KEY)
-      BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS || '' }}
-      BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY || '' }}
-
-      # Required: your Medium cookies (JSON or base64(JSON))
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES || '' }}
-
-      # Optional: user agent override (if empty, a default is used by the script)
-      USER_AGENT: ${{ secrets.USER_AGENT || '' }}
-
-      # Optional fingerprint or other helper secrets (only if you plan to use them)
-      MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT || '' }}
-      MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML || '' }}
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies (ci -> install fallback)
+      # -----------------------------
+      # FIX 1: REMOVE LOCK FILE IF PRESENT
+      # (prevents EINTEGRITY checksum failures)
+      # -----------------------------
+      - name: Remove package-lock.json if exists
         run: |
-          set -e
           if [ -f package-lock.json ]; then
-            echo "package-lock.json found -> using npm ci"
-            npm ci --no-audit --prefer-offline --no-fund || (echo "npm ci failed -> falling back to npm install" && npm install --no-audit --prefer-offline --no-fund)
-          else
-            echo "No package-lock.json -> using npm install"
-            npm install --no-audit --prefer-offline --no-fund
+            echo "Removing corrupted package-lock.json"
+            rm package-lock.json
           fi
 
-      - name: Run Medium automation
-        # If you expect browserless to be used, make sure secrets are set.
-        run: node main.mjs
+      # -------------------------------------------
+      # FIX 2: RELIABLE NPM INSTALL (with RETRY)
+      # -------------------------------------------
+      - name: Install dependencies (with retry)
+        run: |
+          echo "Installing npm packages..."
+          
+          # First attempt
+          npm install --no-audit --prefer-offline --no-fund || \
+          (
+            echo "First install failed. Retrying after clearing cache..."
+            npm cache clean --force
+            sleep 5
+            npm install --no-audit --prefer-offline --no-fund
+          )
 
-      - name: Upload debug screenshots (if created)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: medium-debug-screenshots
-          path: |
-            /tmp/error-medium.png
-            /tmp/cf-challenge.png
-            /tmp/error-medium-*.png
+      # -------------------------------------------
+      # FIX 3: INSTALL PLAYWRIGHT BROWSER BINARIES
+      # -------------------------------------------
+      - name: Install Playwright Browsers
+        run: |
+          npx playwright install chromium
+
+      # -------------------------------------------
+      # FIX 4: RUN YOUR MAIN SCRIPT
+      # -------------------------------------------
+      - name: Run Medium Auto Post
+        env:
+          BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS }}
+          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          USER_AGENT: ${{ secrets.USER_AGENT }}
+          MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT }}
+          MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML }}
+        run: node main.mjs
