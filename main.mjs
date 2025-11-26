@@ -1,6 +1,6 @@
 // main.mjs
 import fs from "fs";
-import { chromium } from "playwright";
+import { chromium } from "playwright-core";
 
 const BROWSERLESS_WS = process.env.BROWSERLESS_WS || ""; // optional full ws url
 const BROWSERLESS_API_KEY = process.env.BROWSERLESS_API_KEY || "";
@@ -131,7 +131,6 @@ async function postToMedium() {
     await context.addInitScript({ content: stealthInitScript() });
   } catch (err) {
     console.warn("addInitScript failed:", err.message || err);
-    // continue — stealth is best-effort
   }
 
   const page = await context.newPage();
@@ -140,7 +139,6 @@ async function postToMedium() {
     console.log("Opening Medium editor...");
     await page.goto("https://medium.com/new-story", { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // small settle wait
     await page.waitForTimeout(2000);
 
     const selector = await waitForMediumEditor(page, 90000);
@@ -162,11 +160,15 @@ async function postToMedium() {
       'div[class*="editorContent"] div[contenteditable="true"]',
       'div[contenteditable="true"]'
     ];
+
     for (const b of bodySelectors) {
       const el = await page.$(b);
       if (el) {
         await el.click({ timeout: 3000 });
-        await page.keyboard.type("This is an automated test body created by Playwright running in GitHub Actions via Browserless.", { delay: 20 });
+        await page.keyboard.type(
+          "This is an automated test body created by Playwright running in GitHub Actions via Browserless.",
+          { delay: 20 }
+        );
         break;
       }
     }
