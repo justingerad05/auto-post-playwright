@@ -6,9 +6,6 @@
     "start": "node main.mjs"
   },
   "dependencies": {
-    "playwright": "^1.45.0",
-    "fingerprint-generator": "^2.1.9",
-    "fingerprint-injector": "^2.1.9",
-    "ua-parser-js": "^1.0.37"
+    "playwright": "^1.45.0"
   }
 }
