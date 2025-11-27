@@ -1,59 +1,51 @@
-name: Run Medium Post (manual)
+name: Run Medium Post
 
 on:
   workflow_dispatch:
 
 jobs:
-  run-medium-post:
+  run-medium:
     runs-on: ubuntu-latest
-
+    env:
+      # optional: if you set USER_AGENT as repo secret, define it below
+      USER_AGENT: ${{ secrets.USER_AGENT || '' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # FIX 1: REMOVE LOCK FILE IF PRESENT
-      # (prevents EINTEGRITY checksum failures)
-      # -----------------------------
-      - name: Remove package-lock.json if exists
-        run: |
-          if [ -f package-lock.json ]; then
-            echo "Removing corrupted package-lock.json"
-            rm package-lock.json
-          fi
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      # -------------------------------------------
-      # FIX 2: RELIABLE NPM INSTALL (with RETRY)
-      # -------------------------------------------
-      - name: Install dependencies (with retry)
+      - name: Create chrome-profile directory
         run: |
-          echo "Installing npm packages..."
-          
-          # First attempt
-          npm install --no-audit --prefer-offline --no-fund || \
-          (
-            echo "First install failed. Retrying after clearing cache..."
-            npm cache clean --force
-            sleep 5
-            npm install --no-audit --prefer-offline --no-fund
-          )
+          mkdir -p /tmp/chrome-profile
 
-      # -------------------------------------------
-      # FIX 3: INSTALL PLAYWRIGHT BROWSER BINARIES
-      # -------------------------------------------
-      - name: Install Playwright Browsers
+      - name: Decode CHROME_PROFILE_B64 and unzip
+        if: ${{ secrets.CHROME_PROFILE_B64 != '' }}
         run: |
-          npx playwright install chromium
+          echo "Decoding CHROME_PROFILE_B64 (this contains your profile ZIP base64)"
+          printf "%s" "${{ secrets.CHROME_PROFILE_B64 }}" > /tmp/profile.b64
+          base64 --decode /tmp/profile.b64 > /tmp/profile.zip || ( echo "base64 decode failed" && exit 1 )
+          # unzip into /tmp/chrome-profile
+          unzip -q /tmp/profile.zip -d /tmp/chrome-profile || ( echo "unzip failed" && exit 1 )
+          # If your zip contained the profile folder name directly, ensure final path to be used:
+          # the unzip may create /tmp/chrome-profile/Profile 1 or Default; we will handle in node script.
 
-      # -------------------------------------------
-      # FIX 4: RUN YOUR MAIN SCRIPT
-      # -------------------------------------------
-      - name: Run Medium Auto Post
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit || npm install --no-audit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run automation
         env:
-          BROWSERLESS_WS: ${{ secrets.BROWSERLESS_WS }}
-          BROWSERLESS_API_KEY: ${{ secrets.BROWSERLESS_API_KEY }}
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-          USER_AGENT: ${{ secrets.USER_AGENT }}
-          MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT }}
-          MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML }}
-        run: node main.mjs
+          CHROME_PROFILE_DIR: /tmp/chrome-profile
+          # If you used a different secret name, set it here
+          MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML || '' }}
+          # USER_AGENT can be passed as secret if you set it
+          USER_AGENT: ${{ secrets.USER_AGENT || '' }}
+        run: |
+          node main.mjs
