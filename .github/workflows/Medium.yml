@@ -1,35 +1,5 @@
-name: Medium Auto Post
-on:
-  workflow_dispatch:
-
-jobs:
-  run-medium:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Download Chrome Profile ZIP
-      run: |
-        curl -L -H "Authorization: token $PRIVATE_REPO_TOKEN" \
-          "$PRIVATE_ZIP_URL" -o medium-profile.zip
-
-    - name: Extract Chrome Profile
-      run: |
-        mkdir profile
-        unzip medium-profile.zip -d profile
-
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 20
-
-    - name: Install dependencies
-      run: npm install
-
-    - name: Run automation
-      env:
-        MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        MEDIUM_FINGERPRINT: ${{ secrets.MEDIUM_FINGERPRINT }}
-        USER_AGENT: ${{ secrets.USER_AGENT }}
-        MEDIUM_POST_HTML: ${{ secrets.MEDIUM_POST_HTML }}
-      run: node main.mjs
+- name: Debug Secret Output
+  run: |
+    echo "PRIVATE_ZIP_URL begins:"
+    printf '%s\n' "$PRIVATE_ZIP_URL"
+    echo "PRIVATE_ZIP_URL ends."
