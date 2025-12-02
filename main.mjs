@@ -1,80 +1,70 @@
 import fs from "fs";
-import unzipper from "unzipper";
+import path from "path";
 import { chromium } from "playwright-core";
+import { FingerprintInjector } from "fingerprint-injector";
 
-const BROWSERLESS_API_KEY = process.env.BROWSERLESS_API_KEY || "";
-const USER_AGENT = process.env.USER_AGENT || "Mozilla/5.0";
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-function stealthScript() {
-  return `(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-    Object.defineProperty(navigator, 'languages', { get: () => ['en-US','en'] });
-    Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4] });
-  })();`;
-}
-
-async function loadProfile() {
-  console.log("Unzipping profile...");
-  return new Promise((resolve, reject) => {
-    fs.createReadStream("medium-profile.zip")
-      .pipe(unzipper.Extract({ path: "medium-profile" }))
-      .on("close", resolve)
-      .on("error", reject);
-  });
-}
-
-async function postToMedium() {
+async function run() {
   console.log("=== Medium Automation Start ===");
 
-  if (!BROWSERLESS_API_KEY) {
-    throw new Error("Missing BROWSERLESS_API_KEY secret");
-  }
+  const cookies = JSON.parse(process.env.MEDIUM_COOKIES);
+  const fingerprint = JSON.parse(process.env.MEDIUM_FINGERPRINT);
+  const html = process.env.MEDIUM_POST_HTML;
+  const userAgent = process.env.USER_AGENT;
 
-  const wsUrl = `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}`;
-  console.log("Connecting:", wsUrl.replace(/token=.*/, "token=***"));
+  const profilePath = path.join(process.cwd(), "profile");
 
-  const browser = await chromium.connectOverCDP(wsUrl, { timeout: 60000 });
+  // Start browser
+  const browser = await chromium.launchPersistentContext(profilePath, {
+    headless: true,
+    viewport: null,
+    userAgent: userAgent
+  });
 
-  const context = await browser.newContext({
-    userAgent: USER_AGENT,
-    viewport: { width: 1280, height: 900 },
-    ignoreHTTPSErrors: true,
-    storageState: {
-      cookies: [],
-      origins: []
+  const page = browser.pages()[0];
+
+  // Inject fingerprint
+  await new FingerprintInjector().attachFingerprintToPlaywright(browser, fingerprint);
+
+  try {
+    console.log("Opening Medium...");
+    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
+
+    await delay(3000);
+
+    // Ensure we are logged in
+    if (page.url().includes("sign-in")) {
+      console.log("ERROR: Not signed in. Cookies/profile failed.");
+      await page.screenshot({ path: "login-error.png" });
+      await browser.close();
+      process.exit(1);
     }
-  });
 
-  await context.addInitScript({ content: stealthScript() });
+    console.log("Medium loaded.");
 
-  const page = await context.newPage();
+    // Wait for editor
+    await page.waitForSelector('[data-testid="editor"]', { timeout: 15000 });
 
-  console.log("Opening Medium editor…");
-  await page.goto("https://medium.com/new-story", {
-    waitUntil: "domcontentloaded",
-    timeout: 60000
-  });
+    // Insert HTML
+    await page.evaluate((content) => {
+      const editor = document.querySelector('[data-testid="editor"]');
+      editor.innerHTML = content;
+    }, html);
 
-  const html = await page.content();
-  if (/Cloudflare|Just a moment|checking your browser/i.test(html)) {
-    await page.screenshot({ path: "/tmp/error.png" });
-    throw new Error("Cloudflare Challenge – cannot continue.");
+    console.log("HTML inserted successfully.");
+
+    await delay(2000);
+
+    console.log("Done.");
+    await browser.close();
+
+  } catch (err) {
+    console.log("Automation crashed:", err);
+    await page.screenshot({ path: "error.png" });
+    await browser.close();
+    process.exit(1);
   }
-
-  console.log("Typing title...");
-  await page.keyboard.type("Automated post title");
-
-  console.log("Typing body...");
-  await page.keyboard.type("This is an automated Medium post using ZIP profile session.");
-
-  await page.waitForTimeout(3000);
-
-  console.log("Closing...");
-  await context.close();
-  await browser.close();
 }
 
-postToMedium().catch(err => {
-  console.error("ERROR:", err.message);
-  process.exit(2);
-});
+run();
