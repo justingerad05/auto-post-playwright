@@ -17,12 +17,12 @@ jobs:
     - name: Download Chrome Profile ZIP
       run: |
         curl -L -H "Authorization: token $PRIVATE_REPO_TOKEN" \
-          "$PRIVATE_ZIP_URL" -o medium-profile.zip
+          "$PRIVATE_ZIP_URL" -o mediumprofile.zip
 
     - name: Extract Chrome Profile
       run: |
         mkdir profile
-        unzip medium-profile.zip -d profile
+        unzip mediumprofile.zip -d profile
 
     - uses: actions/setup-node@v4
       with:
