@@ -1,0 +1,31 @@
+name: Test Private ZIP Download
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print ZIP URL and Token Length
+        run: |
+          echo "PRIVATE_ZIP_URL = $PRIVATE_ZIP_URL"
+          echo "PRIVATE_REPO_TOKEN length = ${#PRIVATE_REPO_TOKEN}"
+
+      - name: Try downloading the ZIP
+        run: |
+          echo "Trying curl..."
+          curl -v -L \
+            -H "Accept: application/octet-stream" \
+            -H "Authorization: token $PRIVATE_REPO_TOKEN" \
+            "$PRIVATE_ZIP_URL" \
+            -o mediumprofile.zip
+
+      - name: Check file
+        run: |
+          echo "Downloaded files:"
+          ls -lh
+    env:
+      PRIVATE_ZIP_URL: ${{ secrets.PRIVATE_ZIP_URL }}
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
