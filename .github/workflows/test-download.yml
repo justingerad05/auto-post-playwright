@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Print ZIP URL and Token Length
         run: |
-          echo "PRIVATE_ZIP_URL = $PRIVATE_ZIP_URL"
+          echo "PRIVATEURL = $PRIVATEURL"
           echo "PRIVATE_REPO_TOKEN length = ${#PRIVATE_REPO_TOKEN}"
 
       - name: Try downloading the ZIP
@@ -19,7 +19,7 @@ jobs:
           curl -v -L \
             -H "Accept: application/octet-stream" \
             -H "Authorization: token $PRIVATE_REPO_TOKEN" \
-            "$PRIVATE_ZIP_URL" \
+            "$PRIVATEURL" \
             -o mediumprofile.zip
 
       - name: Check file
@@ -27,5 +27,5 @@ jobs:
           echo "Downloaded files:"
           ls -lh
     env:
-      PRIVATE_ZIP_URL: ${{ secrets.PRIVATE_ZIP_URL }}
+      PRIVATE_ZIP_URL: ${{ secrets.PRIVATEURL }}
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
