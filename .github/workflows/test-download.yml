@@ -1,17 +1,16 @@
-name: Secret Test
+name: URL Test
 
 on:
   workflow_dispatch:
 
 jobs:
-  test:
+  test-url:
     runs-on: ubuntu-latest
     steps:
-      - name: print if secret exists
+      - name: Print URL
         run: |
-          if [ -z "${{ secrets.PRIVATEURL }}" ]; then
-            echo "secret is NOT accessible"
-            exit 1
-          else
-            echo "secret is accessible"
-          fi
+          echo "URL = ${{ secrets.PRIVATEURL }}"
+
+      - name: Try to HEAD request
+        run: |
+          curl -I -L "${{ secrets.PRIVATEURL }}" || true
