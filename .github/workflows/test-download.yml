@@ -29,3 +29,6 @@ jobs:
     env:
       PRIVATE_ZIP_URL: ${{ secrets.PRIVATEURL }}
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+
+
+permissions: read-all
