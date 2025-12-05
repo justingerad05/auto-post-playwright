@@ -1,16 +1,18 @@
-name: URL Test
+name: Check URL
 
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
-  test-url:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Print URL
+      - name: Show URL length
         run: |
-          echo "URL = ${{ secrets.PRIVATEURL }}"
+          echo "Length = ${#PRIVATEURL}"
+        env:
+          PRIVATEURL: ${{ secrets.PRIVATEURL }}
 
-      - name: Try to HEAD request
+      - name: HEAD request
         run: |
-          curl -I -L "${{ secrets.PRIVATEURL }}" || true
+          curl -I -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
+          "${{ secrets.PRIVATEURL }}"
