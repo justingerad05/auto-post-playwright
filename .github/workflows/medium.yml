@@ -1,28 +1,28 @@
-name: Run Medium Auto Post
+name: Medium Auto Post
 
 on:
   workflow_dispatch:
 
 jobs:
-  run-medium:
+  run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout public repo
         uses: actions/checkout@v4
 
-      - name: Download private ZIP
+      - name: Download private profile ZIP
         run: |
           echo "Downloading private profile..."
           curl -L -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
-            "${{ secrets.PRIVATEZIPURL }}" -o private.zip
+            "${{ secrets.PRIVATE_ZIP_URL }}" -o profile.zip
 
       - name: Unzip private profile
         run: |
-          mkdir private
-          unzip -o private.zip -d private
+          mkdir profile
+          unzip -o profile.zip -d profile
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run script
+      - name: Run Medium script
         env:
-          SECRET_PROFILE: ${{ secrets.SECRET_PROFILE }}
+          PROFILE_PATH: "./profile"
         run: node index.js
