@@ -1,8 +1,0 @@
-{
-  "name": "medium-automation",
-  "type": "module",
-  "dependencies": {
-    "playwright-core": "^1.42.1",
-    "fingerprint-injector": "^2.1.36"
-  }
-}
