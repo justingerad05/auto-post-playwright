@@ -1,0 +1,36 @@
+name: Run Medium Auto Post
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-medium:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download private ZIP
+        run: |
+          echo "Downloading private profile..."
+          curl -L -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
+            "${{ secrets.PRIVATEZIPURL }}" -o private.zip
+
+      - name: Unzip private profile
+        run: |
+          mkdir private
+          unzip -o private.zip -d private
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run script
+        env:
+          SECRET_PROFILE: ${{ secrets.SECRET_PROFILE }}
+        run: node index.js
