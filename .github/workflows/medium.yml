@@ -11,11 +11,12 @@ jobs:
       - name: Checkout public repo
         uses: actions/checkout@v4
 
-      - name: Download private profile ZIP
+      - name: Downloading private profile...
         run: |
-          echo "Downloading private profile..."
-          curl -L -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
-            "${{ secrets.PRIVATE_ZIP_URL }}" -o profile.zip
+             echo "Downloading private profile..."
+             curl -L "$PROFILE_URL" -o medium-profile.zip
+             mkdir profile
+             unzip medium-profile.zip -d profile
 
       - name: Unzip private profile
         run: |
