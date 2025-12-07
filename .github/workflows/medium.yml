@@ -15,12 +15,12 @@ jobs:
         run: |
           echo "Downloading private profile..."
           curl -L -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
-            "${{ secrets.PRIVATE_ZIP_URL }}" -o profile.zip
+            "${{ secrets.PRIVATE_ZIP_URL }}" -o profile
 
       - name: Unzip private profile
         run: |
           mkdir profile
-          unzip -o profile.zip -d profile
+          unzip -o profile -d profile
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
