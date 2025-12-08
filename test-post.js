@@ -2,50 +2,61 @@ import { chromium } from "playwright";
 import path from "path";
 import fs from "fs";
 
-async function run() {
-  const profilePath = process.env.PROFILE_PATH || "./profile";
+const profilePath = process.env.PROFILE_PATH || "./profile";
 
+async function run() {
   if (!fs.existsSync(profilePath)) {
     console.error("❌ Profile folder not found:", profilePath);
     process.exit(1);
   }
 
-  console.log("🚀 Loading Medium profile from:", profilePath);
+  console.log("🚀 Using Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true,
+    headless: true, // keep true for GitHub Actions
     viewport: { width: 1280, height: 800 },
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     args: [
       "--disable-blink-features=AutomationControlled",
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-web-security",
-      "--disable-features=IsolateOrigins,site-per-process"
+      "--disable-features=IsolateOrigins,site-per-process",
+      "--window-size=1280,800"
     ]
   });
 
   const page = await browser.newPage();
 
-  try {
-    console.log("🌐 Opening Medium new story editor...");
-    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle", timeout: 180000 });
-
-    const editorSelector = 'div[contenteditable="true"]';
-    let editorFound = false;
-    for (let i = 0; i < 30; i++) {
-      try {
-        const visible = await page.$eval(editorSelector, el => !!el.offsetParent);
-        if (visible) {
-          editorFound = true;
-          console.log(`✅ Editor detected on attempt ${i + 1}`);
-          await page.click(editorSelector);
-          break;
-        }
-      } catch {}
-      await page.waitForTimeout(5000);
+  // Retry navigation to bypass Cloudflare / network issues
+  let success = false;
+  for (let i = 0; i < 5; i++) {
+    try {
+      console.log(`🌐 Attempting to open Medium editor (try ${i + 1})...`);
+      await page.goto("https://medium.com/new-story", {
+        waitUntil: "networkidle",
+        timeout: 90000
+      });
+      success = true;
+      break;
+    } catch (err) {
+      console.warn("⚠️ Navigation failed, retrying in 10s...");
+      await page.waitForTimeout(10000);
     }
+  }
 
-    if (!editorFound) throw new Error("❌ Medium editor not found after retries");
+  if (!success) {
+    console.error("❌ Unable to load Medium editor after retries");
+    await saveDebug(page);
+    await browser.close();
+    process.exit(1);
+  }
+
+  try {
+    const editorSelector = 'div[contenteditable="true"]';
+    await page.waitForSelector(editorSelector, { timeout: 30000 });
+    await page.click(editorSelector);
 
     console.log("✍️ Writing test post...");
     await page.keyboard.type("Automation Test Post (Ignore)");
@@ -59,20 +70,20 @@ async function run() {
 
     console.log("🎉 Test post published successfully!");
   } catch (err) {
-    console.error("❌ Error occurred:", err);
-
-    const debugDir = path.join(process.cwd(), "debug");
-    if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    await page.screenshot({ path: path.join(debugDir, `failure-${timestamp}.png`), fullPage: true });
-    fs.writeFileSync(path.join(debugDir, `failure-${timestamp}.html`), await page.content());
-
-    await browser.close();
+    console.error("❌ Error during posting:", err);
+    await saveDebug(page);
     process.exit(1);
   }
 
   await browser.close();
+}
+
+async function saveDebug(page) {
+  const debugDir = path.join(process.cwd(), "debug");
+  if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  await page.screenshot({ path: path.join(debugDir, `failure-${timestamp}.png`), fullPage: true });
+  fs.writeFileSync(path.join(debugDir, `failure-${timestamp}.html`), await page.content());
 }
 
 run().catch(err => {
