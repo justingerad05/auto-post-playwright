@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
-import * as path from "path";
-import * as fs from "fs";
+import fs from "fs";
+import path from "path";
 
 async function run() {
   const profilePath = process.env.PROFILE_PATH || "./profile";
@@ -21,7 +21,6 @@ async function run() {
   console.log("Opening Medium new story editor...");
   await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
 
-  // Test title + content
   const testTitle = "Automation Test Post (Please Ignore)";
   const testBody = "This is a *test post* to confirm Medium automation is working.";
 
