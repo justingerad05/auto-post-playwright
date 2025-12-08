@@ -1,13 +1,12 @@
 {
   "name": "medium-auto-post",
   "version": "1.0.0",
-  "main": "index.js",
-  "type": "module",
+  "main": "main-post.js",
   "scripts": {
-    "start": "node index.js"
+    "test-post": "node test-post.js",
+    "main-post": "node main-post.js"
   },
   "dependencies": {
-    "playwright": "^1.45.0",
-    "@extra/stealth-playwright": "^1.0.3"
+    "playwright": "^1.46.0"
   }
 }
