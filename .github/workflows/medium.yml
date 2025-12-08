@@ -11,17 +11,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install Chrome Stable
       - name: Install Chrome Stable
         uses: browser-actions/setup-chrome@latest
 
-      - name: Show Chrome Install Info
+      - name: Show Chrome Info
         run: |
-          echo "Chrome location:"
           which google-chrome
           google-chrome --version
 
-      # Setup Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -30,13 +27,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Run with XVFB to allow full Chrome mode
-      - name: Run Medium Automation
+      - name: Run Medium Automation (via XVFB)
         uses: GabrielBB/xvfb-action@v1
         with:
           run: node index.js
 
-      # Upload screenshots and html debug files
       - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
