@@ -17,7 +17,7 @@ jobs:
           curl -L \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325611337" \
+            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325667026" \
             --output medium-profile.zip
 
       - name: Unzip private profile
