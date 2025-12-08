@@ -1,8 +1,10 @@
-import { chromium } from "playwright";
+import { chromium } from "playwright-extra";
+import StealthPlugin from "playwright-extra-plugin-stealth";
 import path from "path";
 import fs from "fs";
 
 const profilePath = process.env.PROFILE_PATH || "./profile";
+const MAX_RETRIES = 5;
 
 async function run() {
   if (!fs.existsSync(profilePath)) {
@@ -12,11 +14,12 @@ async function run() {
 
   console.log("🚀 Using Medium profile from:", profilePath);
 
+  // Add stealth plugin
+  chromium.use(StealthPlugin());
+
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true, // keep true for GitHub Actions
+    headless: true, 
     viewport: { width: 1280, height: 800 },
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     args: [
       "--disable-blink-features=AutomationControlled",
       "--no-sandbox",
@@ -24,19 +27,19 @@ async function run() {
       "--disable-web-security",
       "--disable-features=IsolateOrigins,site-per-process",
       "--window-size=1280,800"
-    ]
+    ],
   });
 
   const page = await browser.newPage();
 
-  // Retry navigation to bypass Cloudflare / network issues
+  // Retry navigation with stealth
   let success = false;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       console.log(`🌐 Attempting to open Medium editor (try ${i + 1})...`);
       await page.goto("https://medium.com/new-story", {
         waitUntil: "networkidle",
-        timeout: 90000
+        timeout: 120000
       });
       success = true;
       break;
