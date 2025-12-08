@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
-import * as path from "path";
-import * as fs from "fs";
+import path from "path";
+import fs from "fs";
 
 async function run() {
   const profilePath = process.env.PROFILE_PATH || "./profile";
@@ -30,7 +30,6 @@ async function run() {
     console.log("🌐 Opening Medium new story editor...");
     await page.goto("https://medium.com/new-story", { waitUntil: "networkidle", timeout: 180000 });
 
-    // Retry loop to find editor
     const editorSelector = 'div[contenteditable="true"]';
     let editorFound = false;
     for (let i = 0; i < 30; i++) {
