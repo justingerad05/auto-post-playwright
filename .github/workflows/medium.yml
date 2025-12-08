@@ -8,28 +8,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Install Chrome stable
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
 
-      - name: Setup Node
+      - name: Show Chrome info
+        run: |
+          echo "Chrome path:"
+          which google-chrome
+          google-chrome --version
+
+      # 3️⃣ Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
+      # 4️⃣ Install project dependencies
       - name: Install dependencies
         run: npm ci
 
+      # 5️⃣ Install Playwright Chromium browser
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      # 6️⃣ Run the test post
       - name: Run Test Post
         run: node test-post.js
 
-      - name: Upload debugging logs
-        if: failure()
+      # 7️⃣ Upload debug artifacts (if any failures)
+      - name: Upload Debug Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug
-          path: |
-            playwright-report/
-            logs/
+          name: medium-error-artifacts
+          path: debug/
