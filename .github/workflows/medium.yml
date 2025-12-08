@@ -8,13 +8,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout public repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Download private profile ZIP (GitHub Release Asset)
         run: |
           echo "Downloading private profile from private repo release..."
-          
           curl -L \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
@@ -23,7 +22,7 @@ jobs:
 
       - name: Unzip private profile
         run: |
-          mkdir profile
+          mkdir -p profile
           unzip -o medium-profile.zip -d profile
 
       - name: Setup Node.js
@@ -37,4 +36,4 @@ jobs:
       - name: Run Medium Test Post
         env:
           PROFILE_PATH: "./profile"
-        run: node index.js
+        run: npm start
