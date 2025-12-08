@@ -1,88 +1,82 @@
-import { chromium } from "playwright";
-import * as path from "path";
-import * as fs from "fs";
+import { chromium } from 'playwright';
+import fs from 'fs';
+import path from 'path';
 
 async function run() {
-  const profilePath = process.env.PROFILE_PATH || "./profile";
-
-  if (!fs.existsSync(profilePath)) {
-    console.error("❌ Profile folder not found:", profilePath);
-    process.exit(1);
-  }
-
-  console.log("Loading Medium profile from:", profilePath);
-
-  const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: false,  // Medium blocks headless
-    viewport: { width: 1280, height: 800 },
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    args: [
-      "--disable-blink-features=AutomationControlled",
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-web-security",
-      "--disable-features=IsolateOrigins,site-per-process"
-    ]
-  });
-
-  const page = await browser.newPage();
-
   try {
-    console.log("Opening Medium new story editor...");
-    await page.goto("https://medium.com/new-story", {
-      waitUntil: "domcontentloaded",
-      timeout: 180000
+    console.log(`Loading Medium profile from: ./profile`);
+
+    const profilePath = path.resolve("./profile");
+
+    if (!fs.existsSync(profilePath)) {
+      throw new Error(`❌ Profile directory not found at ${profilePath}. Make sure your workflow downloads it.`);
+    }
+
+    // ============================
+    // ✅ FIXED BROWSER LAUNCH HERE
+    // ============================
+    const context = await chromium.launchPersistentContext(profilePath, {
+      headless: true,   // <-- REQUIRED FOR GITHUB ACTIONS
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+      ]
     });
 
-    await page.waitForSelector("section div[role='textbox']", {
-      timeout: 180000
-    });
+    const page = await context.newPage();
 
-    const testTitle = "Automation Test Post (Please Ignore)";
-    const testBody = "This is a *test post* to confirm Medium automation is working.";
+    // ============================
+    // Your existing Medium logic
+    // ============================
 
-    console.log("Writing post title...");
-    await page.click("section div[role='textbox']");
-    await page.keyboard.type(testTitle);
+    console.log("Navigating to Medium to verify login...");
+    await page.goto("https://medium.com/me", { waitUntil: "networkidle" });
 
-    console.log("Writing post body...");
-    await page.keyboard.press("Tab");
-    await page.keyboard.type(testBody);
+    // Check login successful
+    const isLoggedIn = await page.locator("text=Profile").first().isVisible().catch(() => false);
 
-    console.log("Opening Publish modal...");
-    await page.click('text=Publish');
+    if (!isLoggedIn) {
+      throw new Error("❌ Not logged into Medium. Cookies/profile may be invalid.");
+    }
 
-    console.log("Finalizing publish...");
-    await page.waitForSelector('button:has-text("Publish now")');
-    await page.click('button:has-text("Publish now")');
+    console.log("✅ Logged in successfully!");
 
-    console.log("🎉 Test post published successfully!");
-  } catch (err) {
-    console.error("❌ Error occurred:", err);
+    // ============================
+    // Create a test post on Medium
+    // ============================
 
-    const debugDir = path.join(process.cwd(), "debug");
-    if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
+    console.log("Opening new Medium story editor...");
+    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const screenshotPath = path.join(debugDir, `failure-${timestamp}.png`);
-    const htmlPath = path.join(debugDir, `failure-${timestamp}.html`);
+    console.log("Typing test story...");
+    await page.locator("div[data-testid='storytitle']").fill("Automation Test Post");
+    await page.locator("div[data-testid='storycontent']").fill("This is a test post published automatically using Playwright in GitHub Actions.");
 
-    console.log(`📸 Saving screenshot to: ${screenshotPath}`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log("Publishing story...");
+    await page.keyboard.press('Control+Shift+P');
+    await page.waitForTimeout(3000);
 
-    console.log(`💾 Saving page HTML to: ${htmlPath}`);
-    const htmlContent = await page.content();
-    fs.writeFileSync(htmlPath, htmlContent);
+    console.log("✅ Test post created successfully!");
 
-    await browser.close();
+    await context.close();
+
+  } catch (error) {
+    console.error(`❌ Unexpected error: ${error.message}`);
+
+    // Capture screenshot for debugging
+    try {
+      if (!fs.existsSync("debug")) fs.mkdirSync("debug");
+      const browser = await chromium.launch();
+      const page = await browser.newPage();
+      await page.screenshot({ path: "debug/error.png" });
+      await browser.close();
+      console.log("📸 Captured screenshot for debugging.");
+    } catch (screenshotError) {
+      console.log("⚠️ Could not capture screenshot.");
+    }
+
     process.exit(1);
   }
-
-  await browser.close();
 }
 
-run().catch(async (err) => {
-  console.error("❌ Unexpected error:", err);
-  process.exit(1);
-});
+run();
