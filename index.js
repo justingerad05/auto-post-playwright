@@ -1,77 +1,73 @@
 import { chromium } from "playwright";
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
+
+const DEBUG_DIR = path.join(process.cwd(), "debug");
+if (!fs.existsSync(DEBUG_DIR)) fs.mkdirSync(DEBUG_DIR, { recursive: true });
+
+async function safeGoto(page, url, retries = 3) {
+  for (let i = 1; i <= retries; i++) {
+    try {
+      console.log(`Navigating to ${url} (attempt ${i})...`);
+      await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+      return;
+    } catch (err) {
+      console.warn(`⚠️ Attempt ${i} failed: ${err.message}`);
+      if (i === retries) throw err;
+    }
+  }
+}
 
 async function run() {
-  const profilePath = process.env.PROFILE_PATH || "./profile";
-
-  if (!fs.existsSync(profilePath)) {
-    console.error("❌ Profile folder not found:", profilePath);
-    process.exit(1);
-  }
-
-  console.log("Loading Medium profile from:", profilePath);
-
-  const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true,       // headless works in GitHub Actions
-    viewport: { width: 1280, height: 800 },
-  });
-
-  const page = await browser.newPage();
-
   try {
-    console.log("Opening Medium new story editor...");
-    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle", timeout: 120000 });
+    console.log("Launching browser...");
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      storageState: './mediumState.json'
+    });
 
-    // Wait for editor to appear (title input)
-    await page.waitForSelector("section div[role='textbox']", { timeout: 120000 });
+    const page = await context.newPage();
 
-    // Test title + content
+    await safeGoto(page, "https://medium.com/new-story");
+
+    console.log("Waiting for editor textbox...");
+    await page.waitForSelector("section div[role='textbox']", { timeout: 60000 });
+
     const testTitle = "Automation Test Post (Please Ignore)";
     const testBody = "This is a *test post* to confirm Medium automation is working.";
 
-    console.log("Writing post title...");
     await page.click("section div[role='textbox']");
     await page.keyboard.type(testTitle);
-
-    console.log("Writing post body...");
     await page.keyboard.press("Tab");
     await page.keyboard.type(testBody);
 
     console.log("Opening Publish modal...");
     await page.click('text=Publish');
-
-    console.log("Finalizing publish...");
-    await page.waitForSelector('button:has-text("Publish now")');
+    await page.waitForSelector('button:has-text("Publish now")', { timeout: 30000 });
     await page.click('button:has-text("Publish now")');
 
     console.log("🎉 Test post published successfully!");
+    await browser.close();
   } catch (err) {
     console.error("❌ Error occurred:", err);
 
-    // Save screenshot and HTML for debugging
-    const debugDir = path.join(process.cwd(), "debug");
-    if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
-
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const screenshotPath = path.join(debugDir, `failure-${timestamp}.png`);
-    const htmlPath = path.join(debugDir, `failure-${timestamp}.html`);
+    const screenshotPath = path.join(DEBUG_DIR, `failure-${timestamp}.png`);
+    const htmlPath = path.join(DEBUG_DIR, `failure-${timestamp}.html`);
 
-    console.log(`📸 Saving screenshot to: ${screenshotPath}`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    try {
+      if (err.page) {
+        await err.page.screenshot({ path: screenshotPath });
+        fs.writeFileSync(htmlPath, await err.page.content());
+        console.log(`📸 Screenshot saved to: ${screenshotPath}`);
+        console.log(`💾 HTML saved to: ${htmlPath}`);
+      }
+    } catch (e) {
+      console.log("⚠️ Could not capture screenshot/HTML:", e);
+    }
 
-    console.log(`💾 Saving page HTML to: ${htmlPath}`);
-    const htmlContent = await page.content();
-    fs.writeFileSync(htmlPath, htmlContent);
-
-    await browser.close();
     process.exit(1);
   }
-
-  await browser.close();
 }
 
-run().catch(async (err) => {
-  console.error("❌ Unexpected error:", err);
-  process.exit(1);
-});
+run();
