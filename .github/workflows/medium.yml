@@ -8,68 +8,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Cache Node modules
-      - name: Cache Node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-
-
-      # 3️⃣ Cache Playwright browsers
-      - name: Cache Playwright browsers
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-browsers-${{ runner.os }}-
-
-      # 4️⃣ Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      # 5️⃣ Install dependencies
-      - name: Install dependencies
-        run: npm ci
-
-      # 6️⃣ Download private Medium profile ZIP
-      - name: Download private profile
+      - name: Download private profile ZIP (GitHub Release Asset)
         run: |
-          echo "Downloading private profile..."
+          echo "Downloading private profile from private repo release..."
           curl -L \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325611337" \
             --output medium-profile.zip
 
-      # 7️⃣ Unzip profile
       - name: Unzip private profile
         run: |
           mkdir -p profile
           unzip -o medium-profile.zip -d profile
 
-      # 8️⃣ Install Playwright Chromium (ensures browser exists)
-      - name: Install Playwright Chromium
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Chromium for Playwright
         run: npx playwright install chromium
 
-      # 9️⃣ Run Medium test post
       - name: Run Medium Test Post
         env:
-          PROFILE_PATH: ./profile
-        run: |
-          # Capture screenshot if script fails
-          set -o pipefail
-          node index.js || {
-            echo "📸 Capturing screenshot for debugging..."
-            mkdir -p screenshots
-            npx playwright screenshot chromium --path=screenshots/failure.png
-            exit 1
-          }
+          PROFILE_PATH: "./profile"
+        run: npm start
