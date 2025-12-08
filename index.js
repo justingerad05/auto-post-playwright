@@ -13,7 +13,7 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: false,  // Medium blocks headless
+    headless: false, // Must be headed for Medium
     viewport: { width: 1280, height: 800 },
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -61,6 +61,7 @@ async function run() {
   } catch (err) {
     console.error("❌ Error occurred:", err);
 
+    // Save screenshot and HTML immediately
     const debugDir = path.join(process.cwd(), "debug");
     if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
 
@@ -76,7 +77,7 @@ async function run() {
     fs.writeFileSync(htmlPath, htmlContent);
 
     await browser.close();
-    process.exit(1);
+    process.exit(1); // Exit with failure
   }
 
   await browser.close();
