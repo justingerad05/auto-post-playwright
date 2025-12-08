@@ -1,7 +1,7 @@
 {
   "name": "medium-auto-post",
   "version": "1.0.0",
-  "main": "main-post.js",
+  "type": "module",
   "scripts": {
     "test-post": "node test-post.js",
     "main-post": "node main-post.js"
