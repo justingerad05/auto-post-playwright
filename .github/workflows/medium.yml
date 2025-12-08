@@ -8,68 +8,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Cache Node modules
-      - name: Cache Node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: node-modules-${{ hashFiles('package.json') }}
-          restore-keys: |
-            node-modules-
-
-      # 3️⃣ Cache Playwright browsers
-      - name: Cache Playwright browsers
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package.json') }}
-          restore-keys: |
-            playwright-browsers-${{ runner.os }}-
-
-      # 4️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # 5️⃣ Install dependencies (npm install works without package-lock.json)
       - name: Install dependencies
         run: npm install
 
-      # 6️⃣ Download private Medium profile ZIP
-      - name: Download private profile
-        run: |
-          echo "Downloading private profile..."
-          curl -L \
-            -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325667026" \
-            --output medium-profile.zip
-
-      # 7️⃣ Unzip profile
-      - name: Unzip private profile
-        run: |
-          mkdir -p profile
-          unzip -o medium-profile.zip -d profile
-
-      # 8️⃣ Install Playwright Chromium
-      - name: Install Playwright Chromium
+      - name: Install Playwright browsers
         run: npx playwright install chromium
 
-      # 9️⃣ Run Medium test post
-      - name: Run Medium Test Post
-        env:
-          PROFILE_PATH: ./profile
+      - name: Prepare Medium cookies
         run: |
-          # Capture screenshot if script fails
-          set -o pipefail
-          node index.js || {
-            echo "📸 Capturing screenshot for debugging..."
-            mkdir -p screenshots
-            npx playwright screenshot chromium --path=screenshots/failure.png
-            exit 1
-          }
+          mkdir -p .
+          echo "${{ secrets.MEDIUM_COOKIES }}" > mediumState.json
+
+      - name: Run Medium Test Post
+        run: node index.js
+
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-debug
+          path: debug/
