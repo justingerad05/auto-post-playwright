@@ -1,6 +1,6 @@
-import { chromium } from 'playwright';
-import fs from 'fs';
-import path from 'path';
+import { chromium } from "playwright";
+import fs from "fs";
+import path from "path";
 
 async function run() {
   try {
@@ -9,73 +9,60 @@ async function run() {
     const profilePath = path.resolve("./profile");
 
     if (!fs.existsSync(profilePath)) {
-      throw new Error(`❌ Profile directory not found at ${profilePath}. Make sure your workflow downloads it.`);
+      throw new Error(`❌ Profile directory missing: ${profilePath}`);
     }
 
-    // ============================
-    // ✅ FIXED BROWSER LAUNCH HERE
-    // ============================
+    console.log("Launching browser...");
     const context = await chromium.launchPersistentContext(profilePath, {
-      headless: true,   // <-- REQUIRED FOR GITHUB ACTIONS
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox"
-      ]
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
 
     const page = await context.newPage();
 
-    // ============================
-    // Your existing Medium logic
-    // ============================
+    // ⏳ Give Medium enough time to load cookies/session
+    await page.waitForTimeout(5000);
 
-    console.log("Navigating to Medium to verify login...");
-    await page.goto("https://medium.com/me", { waitUntil: "networkidle" });
+    console.log("Navigating to Medium...");
+    await page.goto("https://medium.com/me", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000
+    });
 
-    // Check login successful
-    const isLoggedIn = await page.locator("text=Profile").first().isVisible().catch(() => false);
+    // Check login
+    const loggedIn = await page.locator("a[href*='/@']").first().isVisible().catch(() => false);
 
-    if (!isLoggedIn) {
-      throw new Error("❌ Not logged into Medium. Cookies/profile may be invalid.");
+    if (!loggedIn) {
+      throw new Error("❌ Not logged in. Profile / cookies may be invalid.");
     }
 
     console.log("✅ Logged in successfully!");
 
-    // ============================
-    // Create a test post on Medium
-    // ============================
+    console.log("Opening new story...");
+    await page.goto("https://medium.com/new-story", {
+      waitUntil: "domcontentloaded"
+    });
 
-    console.log("Opening new Medium story editor...");
-    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
+    await page.waitForSelector("div[data-testid='storytitle']");
 
-    console.log("Typing test story...");
-    await page.locator("div[data-testid='storytitle']").fill("Automation Test Post");
-    await page.locator("div[data-testid='storycontent']").fill("This is a test post published automatically using Playwright in GitHub Actions.");
+    console.log("Typing title...");
+    await page.locator("div[data-testid='storytitle']").fill("Automation Test Post From GitHub");
 
-    console.log("Publishing story...");
-    await page.keyboard.press('Control+Shift+P');
-    await page.waitForTimeout(3000);
+    console.log("Typing body...");
+    await page.locator("div[data-testid='storycontent']").fill(
+      "This is a test post automatically published using Playwright + GitHub Actions."
+    );
 
-    console.log("✅ Test post created successfully!");
+    console.log("Publishing...");
+    await page.keyboard.press("Control+Shift+P");
+    await page.waitForTimeout(5000);
+
+    console.log("✅ Test post created!");
 
     await context.close();
-
-  } catch (error) {
-    console.error(`❌ Unexpected error: ${error.message}`);
-
-    // Capture screenshot for debugging
-    try {
-      if (!fs.existsSync("debug")) fs.mkdirSync("debug");
-      const browser = await chromium.launch();
-      const page = await browser.newPage();
-      await page.screenshot({ path: "debug/error.png" });
-      await browser.close();
-      console.log("📸 Captured screenshot for debugging.");
-    } catch (screenshotError) {
-      console.log("⚠️ Could not capture screenshot.");
-    }
-
-    process.exit(1);
+  } catch (err) {
+    console.error(`❌ Unexpected error: ${err.message}`);
+    throw err;
   }
 }
 
