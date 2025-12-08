@@ -11,8 +11,14 @@ jobs:
       # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      # 2️⃣ Cache Node modules
+      # 2️⃣ Install unzip
+      - name: Install unzip
+        run: sudo apt-get install -y unzip
+
+      # 3️⃣ Cache Node modules
       - name: Cache Node modules
         uses: actions/cache@v3
         with:
@@ -21,7 +27,7 @@ jobs:
           restore-keys: |
             node-modules-
 
-      # 3️⃣ Cache Playwright browsers
+      # 4️⃣ Cache Playwright browsers
       - name: Cache Playwright browsers
         uses: actions/cache@v3
         with:
@@ -30,47 +36,51 @@ jobs:
           restore-keys: |
             playwright-browsers-${{ runner.os }}-
 
-      # 4️⃣ Setup Node.js
+      # 5️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # 5️⃣ Install dependencies
+      # 6️⃣ Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # 6️⃣ Download private Medium profile ZIP
+      # 7️⃣ Download private Medium profile ZIP
       - name: Download private profile
         run: |
-          echo "Downloading private profile..."
-          curl -L \
+          echo "Downloading private Medium profile..."
+          curl -L --fail \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325795996" \
             --output medium-profile.zip
 
-      # 7️⃣ Unzip profile
+      # 8️⃣ Unzip profile
       - name: Unzip private profile
         run: |
           mkdir -p profile
           unzip -o medium-profile.zip -d profile
 
-      # 8️⃣ Install Playwright Chromium
+      # 9️⃣ Install Playwright Chromium
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      # 9️⃣ Run Medium test post
+      # 🔟 Install Playwright Ubuntu Dependencies
+      - name: Install Playwright Dependencies
+        run: npx playwright install-deps
+
+      # 1️⃣1️⃣ Run Medium test post
       - name: Run Medium Test Post
         env:
           PROFILE_PATH: ./profile
         run: |
           set -o pipefail
-          node index.js || true  # allow workflow to continue for artifact upload
+          node index.js || true
 
-      # 🔟 Upload debug artifacts immediately if any failures
+      # 1️⃣2️⃣ Upload debug artifacts if failure
       - name: Upload Debug Artifacts
-        if: always()  # runs even if previous step failed
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: medium-error-artifacts
