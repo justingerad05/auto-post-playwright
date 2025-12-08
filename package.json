@@ -1,11 +1,10 @@
 {
-  "name": "auto-post-playwright",
+  "name": "medium-auto-post",
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
-    "playwright": "^1.48.2"
+    "undetectable-playwright": "^1.7.2",
+    "adm-zip": "^0.5.10",
+    "fs-extra": "^11.1.1"
   }
 }
