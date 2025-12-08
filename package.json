@@ -1,8 +1,9 @@
 {
   "name": "auto-post-playwright",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "start": "node main.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "playwright": "^1.48.2"
