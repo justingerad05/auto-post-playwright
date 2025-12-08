@@ -13,7 +13,7 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: false, // Must be headed for Medium
+    headless: false,  // Medium blocks headless
     viewport: { width: 1280, height: 800 },
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -35,15 +35,34 @@ async function run() {
       timeout: 180000
     });
 
-    await page.waitForSelector("section div[role='textbox']", {
-      timeout: 180000
-    });
+    // Wait for editor (try multiple possible selectors)
+    const editorSelectors = [
+      'section div[role="textbox"]',           // current editor
+      'div[data-placeholder="Title"]',        // backup selector
+      'div[contenteditable="true"]'           // generic editable div
+    ];
+
+    let editorFound = false;
+    for (const selector of editorSelectors) {
+      try {
+        await page.waitForSelector(selector, { timeout: 15000 });
+        console.log(`Editor found using selector: ${selector}`);
+        editorFound = true;
+        await page.click(selector);
+        break;
+      } catch {
+        // try next selector
+      }
+    }
+
+    if (!editorFound) {
+      throw new Error("❌ Medium editor not found using any selector");
+    }
 
     const testTitle = "Automation Test Post (Please Ignore)";
     const testBody = "This is a *test post* to confirm Medium automation is working.";
 
     console.log("Writing post title...");
-    await page.click("section div[role='textbox']");
     await page.keyboard.type(testTitle);
 
     console.log("Writing post body...");
@@ -61,7 +80,7 @@ async function run() {
   } catch (err) {
     console.error("❌ Error occurred:", err);
 
-    // Save screenshot and HTML immediately
+    // Save screenshot and HTML for debugging
     const debugDir = path.join(process.cwd(), "debug");
     if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
 
@@ -77,7 +96,7 @@ async function run() {
     fs.writeFileSync(htmlPath, htmlContent);
 
     await browser.close();
-    process.exit(1); // Exit with failure
+    process.exit(1);
   }
 
   await browser.close();
