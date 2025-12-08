@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
 
 async function run() {
   const profilePath = process.env.PROFILE_PATH || "./profile";
@@ -13,16 +13,17 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true, // GitHub Actions requires headless
+    headless: true,
     viewport: { width: 1280, height: 800 },
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     args: [
       "--disable-blink-features=AutomationControlled",
+      "--disable-web-security",
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--disable-web-security",
-      "--disable-features=IsolateOrigins,site-per-process"
+      "--disable-features=IsolateOrigins,site-per-process",
+      "--disable-dev-shm-usage"
     ]
   });
 
@@ -30,63 +31,68 @@ async function run() {
 
   try {
     console.log("Opening Medium new story editor...");
-    await page.goto("https://medium.com/new-story", {
-      waitUntil: "networkidle",
-      timeout: 180000
-    });
 
-    // Retry loop to find the editor reliably
-    const editorSelector = 'div[contenteditable="true"]';
-    let editorFound = false;
-    for (let i = 0; i < 30; i++) { // retry for up to ~3 minutes
+    // Retry navigation instead of relying on networkidle (Medium never becomes idle)
+    for (let i = 0; i < 5; i++) {
       try {
-        const visible = await page.$eval(editorSelector, el => !!el.offsetParent);
-        if (visible) {
-          editorFound = true;
-          console.log(`✅ Editor detected on attempt ${i + 1}`);
-          await page.click(editorSelector);
-          break;
-        }
-      } catch {}
-      await page.waitForTimeout(5000); // wait 5s between retries
+        await page.goto("https://medium.com/new-story", {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
+        });
+        break;
+      } catch {
+        console.log(`Retrying navigation... attempt ${i + 2}`);
+      }
     }
 
-    if (!editorFound) throw new Error("❌ Medium editor not found after retries");
+    // Check if Medium kicked you back to login
+    if (page.url().includes("signin")) {
+      throw new Error("❌ Medium redirected to login. Profile cookies invalid.");
+    }
+
+    // Wait for editor
+    const editorSelector = 'div[contenteditable="true"]';
+    console.log("Waiting for Medium editor to appear...");
+
+    await page.waitForSelector(editorSelector, {
+      timeout: 120000
+    });
+
+    await page.click(editorSelector);
+
+    console.log("Typing test post...");
 
     const testTitle = "Automation Test Post (Please Ignore)";
-    const testBody = "This is a *test post* to confirm Medium automation is working.";
+    const testBody = "This is a *test post* to confirm Medium automation works.";
 
-    console.log("Writing post title...");
     await page.keyboard.type(testTitle);
-
-    console.log("Writing post body...");
     await page.keyboard.press("Tab");
     await page.keyboard.type(testBody);
 
     console.log("Opening Publish modal...");
     await page.click('text=Publish');
 
-    console.log("Finalizing publish...");
+    console.log("Publishing...");
     await page.waitForSelector('button:has-text("Publish now")', { timeout: 60000 });
     await page.click('button:has-text("Publish now")');
 
-    console.log("🎉 Test post published successfully!");
+    console.log("🎉 Test post successfully published!");
+
   } catch (err) {
-    console.error("❌ Error occurred:", err);
+    console.error("❌ Error:", err);
 
     const debugDir = path.join(process.cwd(), "debug");
     if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const screenshotPath = path.join(debugDir, `failure-${timestamp}.png`);
-    const htmlPath = path.join(debugDir, `failure-${timestamp}.html`);
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
 
-    console.log(`📸 Saving screenshot to: ${screenshotPath}`);
+    const screenshotPath = path.join(debugDir, `failure-${ts}.png`);
+    const htmlPath = path.join(debugDir, `failure-${ts}.html`);
+
     await page.screenshot({ path: screenshotPath, fullPage: true });
-
-    console.log(`💾 Saving page HTML to: ${htmlPath}`);
     fs.writeFileSync(htmlPath, await page.content());
 
+    console.log("📸 Debug files saved.");
     await browser.close();
     process.exit(1);
   }
@@ -94,7 +100,4 @@ async function run() {
   await browser.close();
 }
 
-run().catch(err => {
-  console.error("❌ Unexpected error:", err);
-  process.exit(1);
-});
+run();
