@@ -1,6 +1,5 @@
 import { chromium } from "playwright";
 import fs from "fs";
-import path from "path";
 
 /**
  * Safe navigation with retries
@@ -27,17 +26,19 @@ async function run() {
 
   console.log("Loading Medium profile from:", profilePath);
 
+  // Launch headless browser (required in CI) with slowMo for stability
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: false,   // non-headless for CI stability
-    slowMo: 50,        // slows down actions slightly
+    headless: true,    // must be true in GitHub Actions CI
+    slowMo: 50,        // optional, slows actions slightly for stability
   });
 
-  const page = await browser.newPage();
+  // Create a new page with defined viewport
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
   console.log("Opening Medium new story editor...");
   await safeGoto(page, "https://medium.com/new-story");
 
-  // Test title + content
+  // Test post title + body
   const testTitle = "Automation Test Post (Please Ignore)";
   const testBody = "This is a *test post* to confirm Medium automation is working.";
 
