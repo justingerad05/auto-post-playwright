@@ -63,7 +63,7 @@ jobs:
       # 9️⃣ Run Medium test post
       - name: Run Medium Test Post
         env:
-          PROFILE_PATH: ./Default
+          PROFILE_PATH: ./profile
         run: |
           # Capture screenshot if script fails
           set -o pipefail
