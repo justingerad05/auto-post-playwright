@@ -13,7 +13,7 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true, // Must be true on GitHub Actions
+    headless: true, // GitHub Actions requires headless
     viewport: { width: 1280, height: 800 },
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -31,30 +31,27 @@ async function run() {
   try {
     console.log("Opening Medium new story editor...");
     await page.goto("https://medium.com/new-story", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 180000
     });
 
-    // Robust editor detection
-    const editorSelectors = [
-      'section div[role="textbox"]',
-      'div[data-placeholder="Title"]',
-      'div[contenteditable="true"]',
-      'div[aria-label="Write your story"]'
-    ];
-
+    // Retry loop to find the editor reliably
+    const editorSelector = 'div[contenteditable="true"]';
     let editorFound = false;
-    for (const sel of editorSelectors) {
+    for (let i = 0; i < 30; i++) { // retry for up to ~3 minutes
       try {
-        await page.waitForSelector(sel, { timeout: 10000 });
-        console.log(`✅ Editor found using selector: ${sel}`);
-        await page.click(sel);
-        editorFound = true;
-        break;
+        const visible = await page.$eval(editorSelector, el => !!el.offsetParent);
+        if (visible) {
+          editorFound = true;
+          console.log(`✅ Editor detected on attempt ${i + 1}`);
+          await page.click(editorSelector);
+          break;
+        }
       } catch {}
+      await page.waitForTimeout(5000); // wait 5s between retries
     }
 
-    if (!editorFound) throw new Error("❌ Medium editor not found using any selector");
+    if (!editorFound) throw new Error("❌ Medium editor not found after retries");
 
     const testTitle = "Automation Test Post (Please Ignore)";
     const testBody = "This is a *test post* to confirm Medium automation is working.";
@@ -70,7 +67,7 @@ async function run() {
     await page.click('text=Publish');
 
     console.log("Finalizing publish...");
-    await page.waitForSelector('button:has-text("Publish now")');
+    await page.waitForSelector('button:has-text("Publish now")', { timeout: 60000 });
     await page.click('button:has-text("Publish now")');
 
     console.log("🎉 Test post published successfully!");
