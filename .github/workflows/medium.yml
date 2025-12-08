@@ -32,7 +32,7 @@ jobs:
       - name: Clean NPM cache
         run: npm cache clean --force
 
-      # 5️⃣ Install project dependencies (force integrity fix)
+      # 5️⃣ Install dependencies (force)
       - name: Install dependencies
         run: npm install --force
 
@@ -40,7 +40,7 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      # 7️⃣ Download private Medium profile from release asset
+      # 7️⃣ Download private Medium profile
       - name: Download private profile
         run: |
           echo "Downloading private profile..."
