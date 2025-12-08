@@ -56,39 +56,23 @@ jobs:
           mkdir -p profile
           unzip -o medium-profile.zip -d profile
 
-      # 8️⃣ Install Playwright Chromium (with system deps)
+      # 8️⃣ Install Playwright Chromium
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      # 9️⃣ Run Medium Test Post (use xvfb-run so headed browser can run)
+      # 9️⃣ Run Medium Test Post with immediate screenshot capture
       - name: Run Medium Test Post
         env:
           PROFILE_PATH: ./profile
         run: |
           set -o pipefail
-          xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node index.js || {
-            echo "📸 Capturing screenshot for debugging..."
-            mkdir -p screenshots
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node index.js || true
 
-            node -e "
-              const { chromium } = require('playwright');
-              (async () => {
-                const b = await chromium.launch();
-                const p = await b.newPage();
-                await p.goto('https://example.com');
-                await p.screenshot({ path: 'screenshots/failure.png', fullPage: true });
-                await b.close();
-              })();
-            "
-
-            exit 1
-          }
-
-      # Upload both screenshots and debug folder so you can download them
-      - name: Upload Screenshot & Debug Artifacts
+      # 🔟 Upload Debug Artifacts regardless of failure
+      - name: Upload Debug Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: medium-error-artifacts
           path: |
-            screenshots
             debug
+            screenshots
