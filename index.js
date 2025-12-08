@@ -35,23 +35,24 @@ async function run() {
       timeout: 180000
     });
 
-    // Wait for editor (try multiple possible selectors)
+    // Robust editor detection
     const editorSelectors = [
-      'section div[role="textbox"]',           // current editor
-      'div[data-placeholder="Title"]',        // backup selector
-      'div[contenteditable="true"]'           // generic editable div
+      'section div[role="textbox"]',
+      'div[data-placeholder="Title"]',
+      'div[contenteditable="true"]',
+      'div[aria-label="Write your story"]'
     ];
 
     let editorFound = false;
-    for (const selector of editorSelectors) {
+    for (const sel of editorSelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 15000 });
-        console.log(`Editor found using selector: ${selector}`);
+        await page.waitForSelector(sel, { timeout: 10000 });
+        console.log(`✅ Editor found using selector: ${sel}`);
+        await page.click(sel);
         editorFound = true;
-        await page.click(selector);
         break;
       } catch {
-        // try next selector
+        // Try next selector
       }
     }
 
@@ -80,7 +81,6 @@ async function run() {
   } catch (err) {
     console.error("❌ Error occurred:", err);
 
-    // Save screenshot and HTML for debugging
     const debugDir = path.join(process.cwd(), "debug");
     if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
 
