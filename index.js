@@ -13,20 +13,32 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true,       // headless works in GitHub Actions
+    headless: false,  // Medium blocks headless
     viewport: { width: 1280, height: 800 },
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process"
+    ]
   });
 
   const page = await browser.newPage();
 
   try {
     console.log("Opening Medium new story editor...");
-    await page.goto("https://medium.com/new-story", { waitUntil: "networkidle", timeout: 120000 });
+    await page.goto("https://medium.com/new-story", {
+      waitUntil: "domcontentloaded",
+      timeout: 180000
+    });
 
-    // Wait for editor to appear (title input)
-    await page.waitForSelector("section div[role='textbox']", { timeout: 120000 });
+    await page.waitForSelector("section div[role='textbox']", {
+      timeout: 180000
+    });
 
-    // Test title + content
     const testTitle = "Automation Test Post (Please Ignore)";
     const testBody = "This is a *test post* to confirm Medium automation is working.";
 
@@ -49,7 +61,6 @@ async function run() {
   } catch (err) {
     console.error("❌ Error occurred:", err);
 
-    // Save screenshot and HTML for debugging
     const debugDir = path.join(process.cwd(), "debug");
     if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
 
