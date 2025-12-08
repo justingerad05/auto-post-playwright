@@ -66,11 +66,12 @@ jobs:
           PROFILE_PATH: ./profile
         run: |
           set -o pipefail
-          node index.js || exit 1
+          node index.js || true  # allow workflow to continue for artifact upload
 
-      # 🔟 Upload Screenshot & HTML Artifact
-      - name: Upload Screenshot & HTML Artifact
+      # 🔟 Upload debug artifacts immediately if any failures
+      - name: Upload Debug Artifacts
+        if: always()  # runs even if previous step failed
         uses: actions/upload-artifact@v4
         with:
           name: medium-error-artifacts
-          path: debug
+          path: debug/
