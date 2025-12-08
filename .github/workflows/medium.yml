@@ -14,8 +14,11 @@ jobs:
       - name: Install Chrome Stable
         uses: browser-actions/setup-chrome@latest
 
-      - name: Verify Chrome version
-        run: google-chrome --version
+      - name: Show Chrome Location
+        run: |
+          echo "Chrome path:"
+          which google-chrome
+          google-chrome --version
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -25,12 +28,14 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Medium Automation
-        run: node index.js
+      - name: Run in XVFB (Fix blank screen)
+        uses: GabrielBB/xvfb-action@v1
+        with:
+          run: node index.js
 
-      - name: Upload Screenshots (for debugging)
+      - name: Upload Screenshots for Debug
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: screenshots
+          name: debug
           path: screenshots/
