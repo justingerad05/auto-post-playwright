@@ -13,7 +13,7 @@ async function run() {
   console.log("Loading Medium profile from:", profilePath);
 
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: false,  // Medium blocks headless
+    headless: true, // Must be true on GitHub Actions
     viewport: { width: 1280, height: 800 },
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -51,14 +51,10 @@ async function run() {
         await page.click(sel);
         editorFound = true;
         break;
-      } catch {
-        // Try next selector
-      }
+      } catch {}
     }
 
-    if (!editorFound) {
-      throw new Error("❌ Medium editor not found using any selector");
-    }
+    if (!editorFound) throw new Error("❌ Medium editor not found using any selector");
 
     const testTitle = "Automation Test Post (Please Ignore)";
     const testBody = "This is a *test post* to confirm Medium automation is working.";
@@ -92,8 +88,7 @@ async function run() {
     await page.screenshot({ path: screenshotPath, fullPage: true });
 
     console.log(`💾 Saving page HTML to: ${htmlPath}`);
-    const htmlContent = await page.content();
-    fs.writeFileSync(htmlPath, htmlContent);
+    fs.writeFileSync(htmlPath, await page.content());
 
     await browser.close();
     process.exit(1);
@@ -102,7 +97,7 @@ async function run() {
   await browser.close();
 }
 
-run().catch(async (err) => {
+run().catch(err => {
   console.error("❌ Unexpected error:", err);
   process.exit(1);
 });
