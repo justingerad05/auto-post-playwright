@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -17,7 +17,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ hashFiles('package.json') }}
           restore-keys: |
             node-modules-
 
@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package.json') }}
           restore-keys: |
             playwright-browsers-${{ runner.os }}-
 
@@ -36,9 +36,9 @@ jobs:
         with:
           node-version: 18
 
-      # 5️⃣ Install dependencies
+      # 5️⃣ Install dependencies (npm install works without package-lock.json)
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # 6️⃣ Download private Medium profile ZIP
       - name: Download private profile
@@ -47,7 +47,7 @@ jobs:
           curl -L \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325667026" \
+            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325611337" \
             --output medium-profile.zip
 
       # 7️⃣ Unzip profile
@@ -56,7 +56,7 @@ jobs:
           mkdir -p profile
           unzip -o medium-profile.zip -d profile
 
-      # 8️⃣ Install Playwright Chromium (ensures browser exists)
+      # 8️⃣ Install Playwright Chromium
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
