@@ -1,103 +1,59 @@
-import { chromium } from "playwright";
-import * as fs from "fs";
-import * as path from "path";
+import { chromium } from "undetectable-playwright";
+import { prepareProfile } from "./profile-helper.js";
+import fs from "fs";
 
 async function run() {
-  const profilePath = process.env.PROFILE_PATH || "./profile";
+  console.log("🛠 Preparing profile...");
+  const profilePath = await prepareProfile();
 
-  if (!fs.existsSync(profilePath)) {
-    console.error("❌ Profile folder not found:", profilePath);
-    process.exit(1);
-  }
-
-  console.log("Loading Medium profile from:", profilePath);
-
+  console.log("🚀 Launching Chrome Stealth...");
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true,
-    viewport: { width: 1280, height: 800 },
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    headless: false,
     args: [
       "--disable-blink-features=AutomationControlled",
-      "--disable-web-security",
       "--no-sandbox",
-      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-web-security",
       "--disable-features=IsolateOrigins,site-per-process",
-      "--disable-dev-shm-usage"
-    ]
+      "--start-maximized"
+    ],
+    viewport: null
   });
 
   const page = await browser.newPage();
 
-  try {
-    console.log("Opening Medium new story editor...");
+  console.log("🌐 Opening Medium drafts page (Cloudflare-safe)...");
+  await page.goto("https://medium.com/me/stories/drafts", { timeout: 0 });
 
-    // Retry navigation instead of relying on networkidle (Medium never becomes idle)
-    for (let i = 0; i < 5; i++) {
-      try {
-        await page.goto("https://medium.com/new-story", {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        break;
-      } catch {
-        console.log(`Retrying navigation... attempt ${i + 2}`);
-      }
-    }
+  // Wait for Medium dashboard to load
+  await page.waitForLoadState("networkidle");
 
-    // Check if Medium kicked you back to login
-    if (page.url().includes("signin")) {
-      throw new Error("❌ Medium redirected to login. Profile cookies invalid.");
-    }
+  console.log("📝 Clicking 'Write a story'...");
+  await page.waitForSelector('a[href="/new-story"]');
+  await page.click('a[href="/new-story"]');
 
-    // Wait for editor
-    const editorSelector = 'div[contenteditable="true"]';
-    console.log("Waiting for Medium editor to appear...");
+  console.log("✍️ Waiting for editor...");
+  await page.waitForSelector("textarea", { timeout: 30000 });
 
-    await page.waitForSelector(editorSelector, {
-      timeout: 120000
-    });
+  console.log("Typing test title...");
+  await page.keyboard.type("This is a Test Post from Automation", { delay: 80 });
 
-    await page.click(editorSelector);
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("Hello Medium! This is a fully automated test post.", { delay: 50 });
 
-    console.log("Typing test post...");
+  console.log("💾 Opening publish popup...");
+  await page.click('button:has-text("Publish")');
 
-    const testTitle = "Automation Test Post (Please Ignore)";
-    const testBody = "This is a *test post* to confirm Medium automation works.";
+  console.log("⏳ Waiting publish modal...");
+  await page.waitForSelector('button:has-text("Publish now")');
 
-    await page.keyboard.type(testTitle);
-    await page.keyboard.press("Tab");
-    await page.keyboard.type(testBody);
+  console.log("🚀 Publishing...");
+  await page.click('button:has-text("Publish now")');
 
-    console.log("Opening Publish modal...");
-    await page.click('text=Publish');
-
-    console.log("Publishing...");
-    await page.waitForSelector('button:has-text("Publish now")', { timeout: 60000 });
-    await page.click('button:has-text("Publish now")');
-
-    console.log("🎉 Test post successfully published!");
-
-  } catch (err) {
-    console.error("❌ Error:", err);
-
-    const debugDir = path.join(process.cwd(), "debug");
-    if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
-
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-
-    const screenshotPath = path.join(debugDir, `failure-${ts}.png`);
-    const htmlPath = path.join(debugDir, `failure-${ts}.html`);
-
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    fs.writeFileSync(htmlPath, await page.content());
-
-    console.log("📸 Debug files saved.");
-    await browser.close();
-    process.exit(1);
-  }
+  console.log("🎉 POST SENT SUCCESSFULLY!");
 
   await browser.close();
 }
 
-run();
+run().catch(console.error);
