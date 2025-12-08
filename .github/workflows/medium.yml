@@ -11,30 +11,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Chrome Stable
+      - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
 
-      - name: Show Chrome Info
-        run: |
-          which google-chrome
-          google-chrome --version
-
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Run Medium Automation (via XVFB)
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: node index.js
+      - name: Run Test Post
+        run: node test-post.js
 
-      - name: Upload Debug Artifacts
-        if: always()
+      - name: Upload debugging logs
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: medium-error-artifacts
-          path: debug/
+          name: debug
+          path: |
+            playwright-report/
+            logs/
