@@ -8,61 +8,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Chrome stable
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
 
-      - name: Show Chrome info
-        run: |
-          echo "Chrome path:"
-          which google-chrome
-          google-chrome --version
-
-      # 3️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # 4️⃣ Clean NPM cache
       - name: Clean NPM cache
         run: npm cache clean --force
 
-      # 5️⃣ Install dependencies (force)
       - name: Install dependencies
         run: npm install --force
 
-      # 6️⃣ Install Playwright Chromium
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      # 7️⃣ Download private Medium profile
       - name: Download private profile
         run: |
-          echo "Downloading private profile..."
           curl -L \
             -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
             -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325795996" \
+            "https://api.github.com/repos/<YOUR_USERNAME>/<PRIVATE_REPO>/releases/assets/<ASSET_ID>" \
             --output medium-profile.zip
 
-      # 8️⃣ Unzip private profile
       - name: Unzip private profile
-        run: |
-          mkdir -p profile
-          unzip -o medium-profile.zip -d profile
+        run: unzip -o medium-profile.zip -d profile
 
-      # 9️⃣ Run Test Post
       - name: Run Test Post
         env:
           PROFILE_PATH: ./profile
         run: node test-post.js
 
-      # 🔟 Upload debug artifacts (always)
       - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
