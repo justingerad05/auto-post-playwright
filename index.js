@@ -4,10 +4,10 @@ import fs from "fs";
 /**
  * Safe navigation with retries
  */
-async function safeGoto(page, url, retries = 3, timeout = 60000) {
+async function safeGoto(page, url, retries = 3, timeout = 120000) {
   for (let i = 0; i < retries; i++) {
     try {
-      await page.goto(url, { waitUntil: "networkidle", timeout });
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout });
       return;
     } catch (err) {
       console.warn(`⚠️ Attempt ${i + 1} failed for ${url}: ${err.message}`);
@@ -26,19 +26,21 @@ async function run() {
 
   console.log("Loading Medium profile from:", profilePath);
 
-  // Launch headless browser (required in CI) with slowMo for stability
+  // Launch headless Chromium in CI
   const browser = await chromium.launchPersistentContext(profilePath, {
-    headless: true,    // must be true in GitHub Actions CI
-    slowMo: 50,        // optional, slows actions slightly for stability
+    headless: true,
+    slowMo: 50,
   });
 
-  // Create a new page with defined viewport
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
   console.log("Opening Medium new story editor...");
   await safeGoto(page, "https://medium.com/new-story");
 
-  // Test post title + body
+  // Wait for the editor to load (reliable in CI)
+  await page.waitForSelector("section div[role='textbox']", { timeout: 60000 });
+
+  // Test post content
   const testTitle = "Automation Test Post (Please Ignore)";
   const testBody = "This is a *test post* to confirm Medium automation is working.";
 
