@@ -4,36 +4,69 @@ on:
   workflow_dispatch:
 
 jobs:
-  post:
+  run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      # 2️⃣ Cache Node modules
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: node-modules-${{ hashFiles('package.json') }}
+          restore-keys: |
+            node-modules-
 
-      - name: Create profile folder
-        run: mkdir -p profile
+      # 3️⃣ Cache Playwright browsers
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            playwright-browsers-${{ runner.os }}-
 
-      - name: Download Medium profile ZIP
+      # 4️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # 5️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 6️⃣ Download private Medium profile
+      - name: Download private profile
         run: |
-          echo "Downloading profile..."
-          curl -L -o profile.zip \
-            https://raw.githubusercontent.com/justingerad05/auto-post-playwright/main/medium-profile.zip
+          echo "Downloading private profile..."
+          curl -L \
+            -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/justingerad05/mediumprofile/releases/assets/325795996" \
+            --output medium-profile.zip
 
-      - name: Extract Medium profile
+      # 7️⃣ Unzip profile
+      - name: Unzip private profile
         run: |
-          unzip profile.zip -d profile
-          ls -R profile
+          mkdir -p profile
+          unzip -o medium-profile.zip -d profile
 
-      - name: Run Medium poster
+      # 8️⃣ Install Playwright Chromium (with system deps)
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      # 9️⃣ Run Medium Test Post (use xvfb-run so headed browser can run)
+      - name: Run Medium Test Post
         env:
           PROFILE_PATH: ./profile
         run: |
           set -o pipefail
-          node index.js || {
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node index.js || {
             echo "📸 Capturing screenshot for debugging..."
             mkdir -p screenshots
 
@@ -51,8 +84,11 @@ jobs:
             exit 1
           }
 
-      - name: Upload debug screenshots
+      # Upload both screenshots and debug folder so you can download them
+      - name: Upload Screenshot & Debug Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: debug-screenshots
-          path: screenshots
+          name: medium-error-artifacts
+          path: |
+            screenshots
+            debug
