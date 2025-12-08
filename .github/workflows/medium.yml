@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: 18
 
-      # 5️⃣ Install dependencies (npm install works without package-lock.json)
+      # 5️⃣ Install dependencies
       - name: Install dependencies
         run: npm install
 
@@ -65,11 +65,27 @@ jobs:
         env:
           PROFILE_PATH: ./profile
         run: |
-          # Capture screenshot if script fails
           set -o pipefail
           node index.js || {
             echo "📸 Capturing screenshot for debugging..."
             mkdir -p screenshots
-            npx playwright screenshot chromium --path=screenshots/failure.png
+
+            node -e "
+              const { chromium } = require('playwright');
+              (async () => {
+                const b = await chromium.launch();
+                const p = await b.newPage();
+                await p.goto('https://example.com');
+                await p.screenshot({ path: 'screenshots/failure.png', fullPage: true });
+                await b.close();
+              })();
+            "
+
             exit 1
           }
+
+      - name: Upload Screenshot Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-error-screenshot
+          path: screenshots
