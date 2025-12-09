@@ -8,26 +8,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Playwright Browsers
+      # 2️⃣ Install Node dependencies properly
+      - name: Install dependencies
         run: |
+          npm install
           npx playwright install --with-deps
 
-      - name: Login with cookies
+      # 3️⃣ Run login using secret cookies
+      - name: Load Medium profile (using cookies)
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm run login
+        run: |
+          node scripts/loadProfile.js
 
-      - name: Run test post
+      # 4️⃣ Run the test post
+      - name: Create test Medium post
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm run test-post
+        run: |
+          node scripts/testPost.js
 
+      # 5️⃣ Upload Playwright screenshots as artifacts
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: playwright-screenshots
           path: screenshots/
-          retention-days: 7
