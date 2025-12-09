@@ -1,81 +1,51 @@
-import { chromium } from "playwright";
-import fs from "fs";
-import path from "path";
+const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
 
-async function run() {
-  console.log("🔵 Running test post...");
+(async () => {
+  const screenshotsDir = path.join(__dirname, '..', 'screenshots');
+  if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir);
 
-  const cookiesEnv = process.env.MEDIUM_COOKIES;
-  if (!cookiesEnv) {
-    console.error("❌ MEDIUM_COOKIES not found!");
-    process.exit(1);
-  }
-
-  let cookies;
   try {
-    cookies = JSON.parse(cookiesEnv);
-    if (!Array.isArray(cookies)) throw new Error("Cookies must be an array");
-    cookies = cookies.map(c => ({
-      ...c,
-      sameSite: ["Strict", "Lax", "None"].includes(c.sameSite) ? c.sameSite : "Lax",
-    }));
-  } catch (e) {
-    console.error("❌ Invalid MEDIUM_COOKIES JSON:", e.message);
+    const browser = await chromium.launch({ headless: true }); // headless for GitHub Actions
+    const context = await browser.newContext({
+      storageState: process.env.MEDIUM_COOKIES ? JSON.parse(process.env.MEDIUM_COOKIES) : undefined
+    });
+    const page = await context.newPage();
+
+    console.log('🔵 Navigating to Medium new post page...');
+    await page.goto('https://medium.com/new-story', { waitUntil: 'networkidle' });
+
+    // Dynamic editor detection
+    const editorSelectors = [
+      'div[data-testid="storyTitle"]',
+      'div[data-testid="storyContent"]',
+      'div[role="textbox"]',
+      'div[data-placeholder*="Write"]',
+      'textarea'
+    ];
+
+    let editorFound = false;
+    for (const selector of editorSelectors) {
+      const editor = await page.$(selector);
+      if (editor) {
+        console.log(`✅ Editor found using selector: ${selector}`);
+        editorFound = true;
+        break;
+      }
+    }
+
+    if (!editorFound) {
+      const screenshotPath = path.join(screenshotsDir, `medium-editor-fail-${Date.now()}.png`);
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.error(`❌ Could not find the editor. Screenshot saved: ${screenshotPath}`);
+      process.exit(1);
+    }
+
+    console.log('🔵 Test post can proceed! Editor detected.');
+    await browser.close();
+  } catch (err) {
+    console.error('❌ Error during test post:', err);
     process.exit(1);
   }
-
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ storageState: { cookies, origins: [] } });
-  const page = await context.newPage();
-
-  await page.goto("https://medium.com/new-story", { waitUntil: "domcontentloaded" });
-
-  // Close possible modals
-  const modalSelectors = [
-    'button[aria-label="Close"]',
-    'button[aria-label="Dismiss"]',
-    'button:has-text("Skip for now")',
-    'button:has-text("Not now")'
-  ];
-  for (const sel of modalSelectors) {
-    const modal = await page.$(sel);
-    if (modal) {
-      console.log(`⚡ Closing modal ${sel}`);
-      await modal.click();
-      await page.waitForTimeout(500);
-    }
-  }
-
-  // Updated editor selectors
-  const editorSelectors = [
-    'div[data-placeholder="Title"]',       
-    'div[role="textbox"]',                 
-    'div[data-placeholder="Write here…"]', 
-    'textarea'
-  ];
-
-  let editorFound = false;
-  for (const sel of editorSelectors) {
-    try {
-      await page.waitForSelector(sel, { timeout: 10000 });
-      console.log(`✅ Editor found: ${sel}`);
-      editorFound = true;
-      break;
-    } catch {}
-  }
-
-  if (!editorFound) {
-    console.warn("❌ Could not find the editor, Medium DOM may have changed again.");
-
-    // Take screenshot for debugging
-    const screenshotDir = path.resolve(process.cwd(), "screenshots");
-    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
-    const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`📸 Screenshot saved: ${screenshotPath}`);
-  }
-
-  await browser.close();
-}
-
-run();
+})();
