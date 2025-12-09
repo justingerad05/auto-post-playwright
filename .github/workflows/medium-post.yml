@@ -6,34 +6,24 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install dependencies
-        run: |
-          npm install
-          npx playwright install chromium
+        run: npm install
 
-      - name: Login with cookies
+      - name: Load Medium Profile (cookies + storage)
         run: npm run login
-        continue-on-error: true  # do not stop pipeline
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          MEDIUM_STORAGE: ${{ secrets.MEDIUM_STORAGE }}
 
-      - name: 🥷 Stealth Test (Cloudflare bypass)
-        run: |
-          mkdir -p screenshots
-          xvfb-run --auto-servernum -- npm run test-post-stealth
-        continue-on-error: true  # ALWAYS continue
-
-      - name: Normal Test Post (after stealth)
+      - name: Perform Test Post
         run: npm run test-post
-        continue-on-error: true  # normal mode often fails before stealth
-
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: medium-screenshots
-          path: screenshots/
-          if-no-files-found: warn
