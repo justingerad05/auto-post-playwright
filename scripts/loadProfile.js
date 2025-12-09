@@ -1,35 +1,27 @@
+import fs from "fs";
+import path from "path";
 import { chromium } from "playwright";
 
 async function run() {
-  console.log("🔵 Loading Medium cookies from environment variable...");
-
-  const cookiesEnv = process.env.MEDIUM_COOKIES;
-
-  if (!cookiesEnv) {
-    console.error("❌ MEDIUM_COOKIES not found!");
-    process.exit(1);
-  }
-
-  let cookies;
-  try {
-    cookies = JSON.parse(cookiesEnv);
-    if (!Array.isArray(cookies)) {
-      console.error("❌ MEDIUM_COOKIES must be a JSON array of cookies.");
-      process.exit(1);
-    }
-  } catch (e) {
-    console.error("❌ MEDIUM_COOKIES is not valid JSON:", e.message);
-    process.exit(1);
-  }
+  console.log("Loading profile (cookies + storage)…");
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ storageState: { cookies, origins: [] } });
+  const context = await browser.newContext();
 
-  const page = await context.newPage();
-  await page.goto("https://medium.com");
+  // Load cookies from GitHub secret (JSON string)
+  const cookies = JSON.parse(process.env.MEDIUM_COOKIES);
+  await context.addCookies(cookies);
 
-  console.log("✅ Cookies loaded. You are now logged in!");
+  // Load storage state (also JSON string)
+  const storageState = JSON.parse(process.env.MEDIUM_STORAGE);
+  await context.setStorageState(storageState);
+
+  // Save a merged state file for Playwright to reuse
+  const outputPath = path.join(process.cwd(), "medium-state.json");
+  await context.storageState({ path: outputPath });
+
   await browser.close();
+  console.log("✔ Profile loaded. Saved medium-state.json");
 }
 
 run();
