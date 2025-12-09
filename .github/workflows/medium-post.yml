@@ -27,6 +27,7 @@ jobs:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
         run: |
           xvfb-run --auto-servernum -- npm run test-post-stealth
+          
       - name: Stealth Test
         run: npm run test-post-stealth
 
