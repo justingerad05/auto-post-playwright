@@ -1,34 +1,45 @@
 name: Medium Auto Post
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # 1️⃣ Checkout the repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
+      # 2️⃣ Use Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: '20'
 
-      # Use npm ci now that package-lock.json exists
+      # 3️⃣ Install dependencies using npm ci
       - name: Install dependencies
         run: npm ci
 
+      # 4️⃣ Install Playwright browsers
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      # 5️⃣ Run login script
       - name: Login to Medium
-        run: node scripts/loadProfile.js
+        run: npm run login
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
-      - name: Test post
-        run: node scripts/testPost.js
+      # 6️⃣ Run test post
+      - name: Run test post
+        run: npm run test-post
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+
+      # 7️⃣ Optional: Run full article post (comment if you want manual review)
+      # - name: Run article post
+      #   run: npm run post-article
+      #   env:
+      #     MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
