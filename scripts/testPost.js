@@ -1,70 +1,45 @@
 import { chromium } from "playwright";
 import fs from "fs";
-import path from "path";
+
+async function wait(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 async function run() {
-  console.log("🔵 Running test post...");
+  console.log("Starting test post…");
 
-  const cookiesEnv = process.env.MEDIUM_COOKIES;
-  if (!cookiesEnv) {
-    console.error("❌ MEDIUM_COOKIES not found!");
-    process.exit(1);
-  }
-
-  const cookies = JSON.parse(cookiesEnv);
+  // Load merged login state
+  const state = "medium-state.json";
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ storageState: { cookies, origins: [] } });
+  const context = await browser.newContext({ storageState: state });
   const page = await context.newPage();
 
-  await page.goto("https://medium.com/new-story", { waitUntil: "domcontentloaded" });
+  console.log("Opening Medium editor…");
+  await page.goto("https://medium.com/new-story", { timeout: 0 });
 
-  // Close possible modals
-  const modalSelectors = [
-    'button[aria-label="Close"]',
-    'button[aria-label="Dismiss"]',
-    'button:has-text("Skip for now")',
-    'button:has-text("Not now")'
-  ];
-  for (const sel of modalSelectors) {
-    const modal = await page.$(sel);
-    if (modal) await modal.click().catch(() => {});
-  }
+  // Cloudflare challenge bypass wait
+  console.log("Waiting for Cloudflare…");
+  await wait(8000);
 
-  // Updated selectors (robust)
-  const editorSelectors = [
-    'div[data-placeholder="Title"]',             // Title box
-    'div[role="textbox"]',                        // Main editor
-    'div[data-placeholder="Start writing…"]',     // Alternate placeholder
-    'div[data-testid="post-content"]',           // New Medium editor container
-    'textarea'
-  ];
+  // Fill test title
+  await page.waitForSelector('textarea[placeholder="Title"]', { timeout: 0 });
+  await page.fill('textarea[placeholder="Title"]', "🔥 Test Post From Playwright Automation");
 
-  let editor;
-  for (const sel of editorSelectors) {
-    try {
-      editor = await page.waitForSelector(sel, { timeout: 15000 });
-      if (editor) {
-        console.log(`✅ Editor found using selector: ${sel}`);
-        break;
-      }
-    } catch {}
-  }
+  // Fill test body
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("This is a test post created automatically using Playwright.");
 
-  if (!editor) {
-    console.warn("❌ Could not find the editor. Saving screenshot for debugging.");
-    const screenshotDir = path.resolve(process.cwd(), "screenshots");
-    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
-    const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`📸 Screenshot saved: ${screenshotPath}`);
-    process.exit(1); // stop workflow since editor not found
-  }
+  // Wait a little
+  await wait(2000);
 
-  // Optional: type a test title & body
-  await editor.type("Test Post from GitHub Actions", { delay: 50 });
-  console.log("✅ Test title typed!");
+  console.log("Opening publish menu…");
+  await page.click('button:has-text("Publish")');
 
+  await page.waitForSelector('button:has-text("Publish now")', { timeout: 0 });
+  await page.click('button:has-text("Publish now")');
+
+  console.log("✔ Test post published successfully!");
   await browser.close();
 }
 
