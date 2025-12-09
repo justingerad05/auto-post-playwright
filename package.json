@@ -5,7 +5,9 @@
   "scripts": {
     "login": "node scripts/loadProfile.js",
     "test-post": "node scripts/testPost.js",
-    "post-article": "node scripts/postArticle.js"
+    "post-article": "node scripts/postArticle.js",
+    "test-post-stealth": "node scripts/testPostStealth.js"
+}
   },
   "dependencies": {
     "playwright": "^1.56.1"
