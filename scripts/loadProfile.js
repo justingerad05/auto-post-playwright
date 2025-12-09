@@ -10,12 +10,20 @@ async function run() {
     process.exit(1);
   }
 
-  const cookies = JSON.parse(cookiesEnv);
+  let cookies;
+  try {
+    cookies = JSON.parse(cookiesEnv);
+    if (!Array.isArray(cookies)) {
+      console.error("❌ MEDIUM_COOKIES must be a JSON array of cookies.");
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error("❌ MEDIUM_COOKIES is not valid JSON:", e.message);
+    process.exit(1);
+  }
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    storageState: { cookies, origins: [] }
-  });
+  const context = await browser.newContext({ storageState: { cookies, origins: [] } });
 
   const page = await context.newPage();
   await page.goto("https://medium.com");
