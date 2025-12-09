@@ -5,11 +5,12 @@
   "scripts": {
     "login": "node scripts/loadProfile.js",
     "test-post": "node scripts/testPost.js",
-    "post-article": "node scripts/postArticle.js",
-    "test-post-stealth": "node scripts/testPostStealth.js"
-}
+    "test-post-stealth": "node scripts/testPostStealth.js",
+    "post-article": "node scripts/postArticle.js"
   },
   "dependencies": {
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "playwright-extra": "^4.3.6",
+    "playwright-extra-plugin-stealth": "^2.11.1"
   }
 }
