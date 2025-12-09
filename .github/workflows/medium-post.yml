@@ -1,4 +1,4 @@
-name: Medium Auto Post
+name: Medium Auto Post (final)
 
 on:
   workflow_dispatch:
@@ -6,36 +6,69 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1) checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node
+      # 2) setup node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3️⃣ Install dependencies
-      - name: Install dependencies
+      # 3) install npm deps & playwright browsers
+      - name: Install dependencies & Playwright browsers
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps
 
-      # 4️⃣ Run Medium Post Script (this creates screenshot.png)
-      - name: Run Medium Auto Post
-        env:
-          MEDIUM_USERNAME: ${{ secrets.MEDIUM_USERNAME }}
-          MEDIUM_PASSWORD: ${{ secrets.MEDIUM_PASSWORD }}
+      # 4) sanity: show package.json scripts (debug)
+      - name: Show package.json scripts (debug)
         run: |
-          node medium.js
+          echo "=== package.json scripts ==="
+          node -e "console.log(require('./package.json').scripts || {})"
 
-      # 5️⃣ Upload Screenshot Artifact
-      - name: Upload screenshot
+      # 5) Login (loads cookies from secret into Playwright storage)
+      - name: Login (load cookies)
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          echo "Running login step (npm run login)"
+          npm run login
+
+      # 6) Run test-post (will save screenshots on failure via script)
+      - name: Run test post (safe)
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        continue-on-error: true
+        run: |
+          echo "Running test post (npm run test-post)"
+          npm run test-post
+
+      # 7) Optionally run the real posting script (only if you want)
+      - name: Post article (optional)
+        if: ${{ github.event.inputs.publish == 'true' || github.ref == 'refs/heads/main' }}
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          echo "Running post-article (npm run post-article)"
+          npm run post-article
+
+      # 8) Upload screenshots (if any) as artifacts so you can download them
+      - name: Upload screenshots (if any)
         uses: actions/upload-artifact@v4
         with:
-          name: medium-screenshot
-          path: screenshot.png
-          if-no-files-found: error
+          name: medium-screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+
+      # 9) Upload other debug artifacts (page HTML) if present
+      - name: Upload debug HTML files (if any)
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-debug-html
+          path: debug/
+          if-no-files-found: ignore
