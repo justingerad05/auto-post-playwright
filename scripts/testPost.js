@@ -4,7 +4,6 @@ async function run() {
   console.log("🔵 Running test post...");
 
   const cookiesEnv = process.env.MEDIUM_COOKIES;
-
   if (!cookiesEnv) {
     console.error("❌ MEDIUM_COOKIES not found!");
     process.exit(1);
@@ -14,8 +13,7 @@ async function run() {
   try {
     cookies = JSON.parse(cookiesEnv);
     if (!Array.isArray(cookies)) throw new Error("Cookies must be an array");
-
-    // Normalize sameSite
+    // normalize sameSite
     cookies = cookies.map(c => ({
       ...c,
       sameSite: ["Strict", "Lax", "None"].includes(c.sameSite) ? c.sameSite : "Lax",
@@ -35,28 +33,30 @@ async function run() {
   const modalSelectors = [
     'button[aria-label="Close"]',
     'button[aria-label="Dismiss"]',
-    'button:has-text("Skip for now")'
+    'button:has-text("Skip for now")',
+    'button:has-text("Not now")'
   ];
   for (const sel of modalSelectors) {
     const modal = await page.$(sel);
     if (modal) {
       console.log(`⚡ Closing modal ${sel}`);
       await modal.click();
-      await page.waitForTimeout(500); // wait a bit after closing
+      await page.waitForTimeout(500);
     }
   }
 
-  // Try multiple possible editor selectors
+  // Updated editor selectors
   const editorSelectors = [
-    'div[role="textbox"]',
-    'div[data-placeholder="Title"]',
+    'div[data-placeholder="Title"]',       // title box
+    'div[role="textbox"]',                 // main editor
+    'div[data-placeholder="Write here…"]', // new fallback placeholder
     'textarea'
   ];
 
   let editorFound = false;
   for (const sel of editorSelectors) {
     try {
-      await page.waitForSelector(sel, { timeout: 15000 });
+      await page.waitForSelector(sel, { timeout: 10000 });
       console.log(`✅ Editor found: ${sel}`);
       editorFound = true;
       break;
@@ -64,7 +64,7 @@ async function run() {
   }
 
   if (!editorFound) {
-    console.warn("❌ Could not find the editor, Medium DOM may have changed.");
+    console.warn("❌ Could not find the editor, Medium DOM may have changed again.");
   }
 
   await browser.close();
