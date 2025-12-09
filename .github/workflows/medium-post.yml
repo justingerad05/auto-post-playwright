@@ -16,25 +16,19 @@ jobs:
         with:
           node-version: 20
 
-      # Use npm install instead of npm ci
+      # Use npm ci now that package-lock.json exists
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Login to Medium
-        run: npm run login
+        run: node scripts/loadProfile.js
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
-      - name: Test post on Medium
-        run: npm run test-post
+      - name: Test post
+        run: node scripts/testPost.js
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: medium-screenshots
-          path: screenshots/
