@@ -1,4 +1,6 @@
 import { chromium } from "playwright";
+import fs from "fs";
+import path from "path";
 
 async function run() {
   console.log("🔵 Running test post...");
@@ -13,7 +15,6 @@ async function run() {
   try {
     cookies = JSON.parse(cookiesEnv);
     if (!Array.isArray(cookies)) throw new Error("Cookies must be an array");
-    // normalize sameSite
     cookies = cookies.map(c => ({
       ...c,
       sameSite: ["Strict", "Lax", "None"].includes(c.sameSite) ? c.sameSite : "Lax",
@@ -25,8 +26,8 @@ async function run() {
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ storageState: { cookies, origins: [] } });
-
   const page = await context.newPage();
+
   await page.goto("https://medium.com/new-story", { waitUntil: "domcontentloaded" });
 
   // Close possible modals
@@ -47,9 +48,9 @@ async function run() {
 
   // Updated editor selectors
   const editorSelectors = [
-    'div[data-placeholder="Title"]',       // title box
-    'div[role="textbox"]',                 // main editor
-    'div[data-placeholder="Write here…"]', // new fallback placeholder
+    'div[data-placeholder="Title"]',       
+    'div[role="textbox"]',                 
+    'div[data-placeholder="Write here…"]', 
     'textarea'
   ];
 
@@ -65,6 +66,13 @@ async function run() {
 
   if (!editorFound) {
     console.warn("❌ Could not find the editor, Medium DOM may have changed again.");
+
+    // Take screenshot for debugging
+    const screenshotDir = path.resolve(process.cwd(), "screenshots");
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+    const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log(`📸 Screenshot saved: ${screenshotPath}`);
   }
 
   await browser.close();
