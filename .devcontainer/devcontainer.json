@@ -1,0 +1,16 @@
+{
+  "name": "Playwright Login Environment",
+  "image": "mcr.microsoft.com/playwright:v1.48.0",
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-playwright.playwright"
+      ]
+    }
+  },
+  "forwardPorts": [3000, 3001, 9222],
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  }
+}
