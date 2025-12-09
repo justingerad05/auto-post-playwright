@@ -11,18 +11,7 @@ async function run() {
     process.exit(1);
   }
 
-  let cookies;
-  try {
-    cookies = JSON.parse(cookiesEnv);
-    if (!Array.isArray(cookies)) throw new Error("Cookies must be an array");
-    cookies = cookies.map(c => ({
-      ...c,
-      sameSite: ["Strict", "Lax", "None"].includes(c.sameSite) ? c.sameSite : "Lax",
-    }));
-  } catch (e) {
-    console.error("❌ Invalid MEDIUM_COOKIES JSON:", e.message);
-    process.exit(1);
-  }
+  const cookies = JSON.parse(cookiesEnv);
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ storageState: { cookies, origins: [] } });
@@ -39,41 +28,42 @@ async function run() {
   ];
   for (const sel of modalSelectors) {
     const modal = await page.$(sel);
-    if (modal) {
-      console.log(`⚡ Closing modal ${sel}`);
-      await modal.click();
-      await page.waitForTimeout(500);
-    }
+    if (modal) await modal.click().catch(() => {});
   }
 
-  // Updated editor selectors
+  // Updated selectors (robust)
   const editorSelectors = [
-    'div[data-placeholder="Title"]',       
-    'div[role="textbox"]',                 
-    'div[data-placeholder="Write here…"]', 
+    'div[data-placeholder="Title"]',             // Title box
+    'div[role="textbox"]',                        // Main editor
+    'div[data-placeholder="Start writing…"]',     // Alternate placeholder
+    'div[data-testid="post-content"]',           // New Medium editor container
     'textarea'
   ];
 
-  let editorFound = false;
+  let editor;
   for (const sel of editorSelectors) {
     try {
-      await page.waitForSelector(sel, { timeout: 10000 });
-      console.log(`✅ Editor found: ${sel}`);
-      editorFound = true;
-      break;
+      editor = await page.waitForSelector(sel, { timeout: 15000 });
+      if (editor) {
+        console.log(`✅ Editor found using selector: ${sel}`);
+        break;
+      }
     } catch {}
   }
 
-  if (!editorFound) {
-    console.warn("❌ Could not find the editor, Medium DOM may have changed again.");
-
-    // Take screenshot for debugging
+  if (!editor) {
+    console.warn("❌ Could not find the editor. Saving screenshot for debugging.");
     const screenshotDir = path.resolve(process.cwd(), "screenshots");
     if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
     const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`📸 Screenshot saved: ${screenshotPath}`);
+    process.exit(1); // stop workflow since editor not found
   }
+
+  // Optional: type a test title & body
+  await editor.type("Test Post from GitHub Actions", { delay: 50 });
+  console.log("✅ Test title typed!");
 
   await browser.close();
 }
