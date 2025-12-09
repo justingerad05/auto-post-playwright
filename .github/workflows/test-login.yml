@@ -1,4 +1,4 @@
-name: Test Medium Login (Remote Browser)
+name: Test Medium Login (Cloudflare Tunnel)
 
 on:
   workflow_dispatch:
@@ -12,16 +12,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install Playwright
+      - name: Install Dependencies
         run: |
+          sudo apt update
+          sudo apt install -y xvfb x11vnc fluxbox websockify novnc
           npm install playwright
           npx playwright install chromium
 
-      - name: Start Remote Browser
+      - name: Start Virtual Display
         run: |
-          npx playwright codegen medium.com/m/signin --browser=chromium --output login.js
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 &
+
+      - name: Start Window Manager
+        run: |
+          fluxbox &
+
+      - name: Start VNC Server
+        run: |
+          x11vnc -display :99 -nopw -forever -shared -rfbport 5901 &
+
+      - name: Start noVNC
+        run: |
+          websockify --web=/usr/share/novnc/ 6080 localhost:5901 &
+
+      - name: Install Cloudflared
+        run: |
+          wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+
+      - name: Start Tunnel
+        run: |
+          cloudflared tunnel --url http://localhost:6080 > tunnel.log 2>&1 &
+
+      - name: Wait for tunnel URL
+        run: |
+          sleep 10
+          echo "=========== CLOUD TUNNEL URL ==========="
+          grep -o "https://.*trycloudflare.com" tunnel.log
+          echo "========================================"
+
+      - name: Start Chromium for Login
+        run: |
+          export DISPLAY=:99
+          chromium --no-sandbox --user-data-dir=/home/runner/chrome-profile https://medium.com/m/signin &
