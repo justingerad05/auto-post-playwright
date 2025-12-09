@@ -4,37 +4,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-post:
+  run:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v4
+      uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      # 2️⃣ Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
+          npx playwright install --with-deps
 
-      - name: Login to Medium
+      # 4️⃣ Run Medium Post Script (this creates screenshot.png)
+      - name: Run Medium Auto Post
         env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm run login
+          MEDIUM_USERNAME: ${{ secrets.MEDIUM_USERNAME }}
+          MEDIUM_PASSWORD: ${{ secrets.MEDIUM_PASSWORD }}
+        run: |
+          node medium.js
 
-      - name: Run test post
-        env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: npm run test-post
-        continue-on-error: true
-
-      - name: Upload screenshots
-        if: failure()
+      # 5️⃣ Upload Screenshot Artifact
+      - name: Upload screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: medium-test-screenshots
-          path: screenshots/
+          name: medium-screenshot
+          path: screenshot.png
+          if-no-files-found: error
