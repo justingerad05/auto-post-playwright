@@ -4,27 +4,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  medium-login:
+  run:
     runs-on: ubuntu-latest
-    env:
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install xvfb (for headful browser)
+        run: sudo apt-get install -y xvfb
 
       - name: Install dependencies
+        run: npm install
+
+      - name: Run Medium Test Post (Stealth Mode)
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
         run: |
-          npm install
-          npx playwright install chromium
-
-      - name: Login with cookies
-        run: npm run login
-
-      - name: Test Post
-        run: npm run test-post
-        continue-on-error: true  # allows artifact upload even if test-post fails
+          xvfb-run --auto-servernum -- npm run test-post-stealth
 
       - name: Upload screenshots
-        uses: actions/upload-artifact@v4  # updated to v4
+        uses: actions/upload-artifact@v4
         with:
           name: medium-screenshots
           path: screenshots/
+          if-no-files-found: warn
