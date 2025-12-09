@@ -4,36 +4,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  medium-login:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Install Node dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npx playwright install chromium
 
-      # 3️⃣ Install Playwright browsers
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      # 4️⃣ Run login script
-      - name: Load Medium Profile
-        run: npm run login
+      - name: Test Medium Login
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          npm run login
+          npm run test-post
 
-      # 5️⃣ Run test post script
-      - name: Send Test Post
-        run: npm run test-post
+      - name: Post Article (Optional)
+        if: github.event.inputs.publish == 'true'
         env:
           MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-
-      # 6️⃣ Run actual post script (optional)
-      # - name: Post Article
-      #   run: npm run post-article
-      #   env:
-      #     MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+        run: |
+          npm run post-article
