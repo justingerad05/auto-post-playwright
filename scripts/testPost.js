@@ -4,51 +4,60 @@ import fs from 'fs';
 import path from 'path';
 
 const SCREENSHOT_DIR = path.join(process.cwd(), 'screenshots');
+
 if (!fs.existsSync(SCREENSHOT_DIR)) {
-  fs.mkdirSync(SCREENSHOT_DIR);
+  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 }
 
-const cookiesEnv = process.env.MEDIUM_COOKIES;
-if (!cookiesEnv) {
-  console.error('❌ MEDIUM_COOKIES environment variable not set!');
-  process.exit(1);
-}
-
-const cookies = JSON.parse(cookiesEnv);
-
-(async () => {
+async function run() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    storageState: { cookies }
+    storageState: {
+      cookies: JSON.parse(process.env.MEDIUM_COOKIES || '[]'),
+    },
   });
 
   const page = await context.newPage();
 
   try {
+    console.log('🔵 Opening Medium...');
     await page.goto('https://medium.com/new-story', { waitUntil: 'domcontentloaded' });
-    console.log('🔵 Running test post...');
 
-    // Wait for the editor textbox
-    const editor = await page.waitForSelector('div[role="textbox"]', { timeout: 15000 });
-
-    if (!editor) {
-      throw new Error('Editor not found');
+    // Close potential modals/popups
+    const closeButtons = await page.$$('button[aria-label="Close"], button[jsaction="close"]');
+    for (const btn of closeButtons) {
+      await btn.click().catch(() => {});
     }
 
-    console.log('✅ Editor loaded successfully!');
-    
-    // Optionally: Type a test post
-    await editor.fill('This is a test post from GitHub Actions automation.');
-    
-    console.log('✅ Test post ready (not published).');
+    // Wait for the editor to appear (increase timeout to 30s)
+    console.log('🔵 Waiting for the editor...');
+    await page.waitForSelector(
+      'div[contenteditable="true"][role="textbox"], div.js-postField, div.section-inner',
+      { timeout: 30000 }
+    );
 
+    console.log('✅ Editor found! Running test post...');
+    // Insert a test title and content
+    const titleBox = await page.$('h1');
+    if (titleBox) await titleBox.type('Test Post from GitHub Actions', { delay: 50 });
+
+    const editorBox = await page.$(
+      'div[contenteditable="true"][role="textbox"], div.js-postField, div.section-inner'
+    );
+    if (editorBox) await editorBox.type('This is a test post sent from GitHub Actions.', { delay: 50 });
+
+    console.log('✅ Test post input completed.');
   } catch (err) {
     console.error('❌ Could not find the editor or another error occurred:', err.message);
+
+    // Save screenshot for debugging
     const screenshotPath = path.join(SCREENSHOT_DIR, `medium-editor-fail-${Date.now()}.png`);
-    await page.screenshot({ path: screenshotPath });
+    await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`📸 Screenshot saved: ${screenshotPath}`);
     process.exit(1);
   } finally {
     await browser.close();
   }
-})();
+}
+
+run();
