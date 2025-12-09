@@ -13,10 +13,18 @@ async function run() {
   let cookies;
   try {
     cookies = JSON.parse(cookiesEnv);
+
     if (!Array.isArray(cookies)) {
       console.error("❌ MEDIUM_COOKIES must be a JSON array of cookies.");
       process.exit(1);
     }
+
+    // Fix sameSite automatically if invalid
+    cookies = cookies.map(c => ({
+      ...c,
+      sameSite: ["Strict", "Lax", "None"].includes(c.sameSite) ? c.sameSite : "Lax",
+    }));
+
   } catch (e) {
     console.error("❌ MEDIUM_COOKIES is not valid JSON:", e.message);
     process.exit(1);
