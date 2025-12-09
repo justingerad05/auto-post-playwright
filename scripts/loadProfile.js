@@ -1,9 +1,7 @@
 import { chromium } from "playwright";
-import fs from "fs";
-import path from "path";
 
 async function run() {
-  console.log("🔵 Running test post…");
+  console.log("🔵 Loading profile (cookies + storage)…");
 
   const cookiesBase64 = process.env.MEDIUM_COOKIES;
   const storageBase64 = process.env.MEDIUM_STORAGE;
@@ -22,58 +20,18 @@ async function run() {
     process.exit(1);
   }
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: false }); // set headless: false for debug
   const context = await browser.newContext({
     storageState: { cookies, origins: storage.origins || [] }
   });
 
   const page = await context.newPage();
-  await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
+  await page.goto("https://medium.com", { waitUntil: "networkidle" });
 
-  // Wait extra for Cloudflare
-  await page.waitForTimeout(8000);
+  console.log("✅ Cookies + Storage loaded. Logged in!");
 
-  // Close potential modals
-  const modalSelectors = [
-    'button[aria-label="Close"]',
-    'button[aria-label="Dismiss"]',
-    'button:has-text("Skip for now")',
-    'button:has-text("Not now")'
-  ];
-  for (const sel of modalSelectors) {
-    const modal = await page.$(sel);
-    if (modal) {
-      await modal.click();
-      await page.waitForTimeout(500);
-    }
-  }
-
-  // Editor selectors
-  const editorSelectors = [
-    'div[data-placeholder="Title"]',
-    'div[role="textbox"]',
-    'div[data-placeholder="Write here…"]',
-    'textarea'
-  ];
-
-  let editorFound = false;
-  for (const sel of editorSelectors) {
-    try {
-      await page.waitForSelector(sel, { timeout: 15000 });
-      console.log(`✅ Editor found: ${sel}`);
-      editorFound = true;
-      break;
-    } catch {}
-  }
-
-  if (!editorFound) {
-    console.warn("❌ Could not find the editor, Cloudflare may still block it.");
-    const screenshotDir = path.resolve(process.cwd(), "screenshots");
-    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
-    const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`📸 Screenshot saved: ${screenshotPath}`);
-  }
+  // Optional: Wait a few seconds to allow Cloudflare to complete
+  await page.waitForTimeout(5000);
 
   await browser.close();
 }
