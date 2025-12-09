@@ -6,30 +6,27 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install xvfb (for headful browser)
-        run: sudo apt-get install -y xvfb
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Run Medium Test Post (Stealth Mode)
-        env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
         run: |
-          xvfb-run --auto-servernum -- npm run test-post-stealth
-          
+          npm install
+          npx playwright install chromium
+
+      - name: Login with cookies
+        run: npm run login
+
+      - name: Test Post (non-stealth)
+        run: npm run test-post
+
       - name: Stealth Test
-        run: npm run test-post-stealth
+        run: |
+          mkdir -p screenshots
+          xvfb-run --auto-servernum -- npm run test-post-stealth
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
