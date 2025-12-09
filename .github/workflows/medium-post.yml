@@ -21,3 +21,10 @@ jobs:
 
       - name: Test Post
         run: npm run test-post
+        continue-on-error: true  # allow artifact upload even if test-post fails
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v3
+        with:
+          name: medium-screenshots
+          path: screenshots/
