@@ -6,30 +6,18 @@ on:
 jobs:
   medium-login:
     runs-on: ubuntu-latest
+    env:
+      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           npm install
           npx playwright install chromium
 
-      - name: Test Medium Login
-        env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: |
-          npm run login
-          npm run test-post
+      - name: Login with cookies
+        run: npm run login
 
-      - name: Post Article (Optional)
-        if: github.event.inputs.publish == 'true'
-        env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-        run: |
-          npm run post-article
+      - name: Test Post
+        run: npm run test-post
