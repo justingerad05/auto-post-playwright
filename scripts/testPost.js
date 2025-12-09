@@ -1,77 +1,30 @@
-// scripts/testPost.js
 import { chromium } from "playwright";
-import fs from "fs";
-import path from "path";
-
-const SCREENSHOT_DIR = path.join(process.cwd(), "screenshots");
-if (!fs.existsSync(SCREENSHOT_DIR)) {
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-}
 
 async function run() {
-  let cookies;
-  try {
-    cookies = JSON.parse(process.env.MEDIUM_COOKIES || "[]");
-  } catch {
-    console.error("❌ Invalid MEDIUM_COOKIES format!");
-    process.exit(1);
-  }
+  console.log("🔵 Running test post...");
+
+  const cookiesEnv = process.env.MEDIUM_COOKIES;
+  const cookies = JSON.parse(cookiesEnv);
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    storageState: { cookies }
+    storageState: { cookies, origins: [] }
   });
 
   const page = await context.newPage();
+  await page.goto("https://medium.com/new-story");
 
-  try {
-    console.log("🔵 Opening Medium new-story page...");
-    await page.goto("https://medium.com/new-story", {
-      waitUntil: "domcontentloaded"
-    });
+  // Wait for editor to load
+  await page.waitForSelector('div[role="textbox"]', { timeout: 15000 });
 
-    // Close popups
-    await page.$$eval(
-      'button[aria-label="Close"], button[data-action="close"]',
-      (buttons) => buttons.forEach((btn) => btn.click())
-    );
+  // Add a test title and body
+  await page.fill('div[role="textbox"]', "This is a test post via automation.");
+  await page.keyboard.press('Enter');
+  await page.fill('div[role="textbox"] >> nth=1', "Medium Auto Post Test");
 
-    console.log("🔵 Waiting for editor...");
-    await page.waitForSelector("h1, div[role='textbox']", { timeout: 30000 });
+  console.log("✅ Test post filled. Check Medium editor manually if needed.");
 
-    console.log("✍️ Typing test title...");
-    const title = await page.$("h1");
-    if (title) await title.type("Test Post from GitHub Actions", { delay: 40 });
-
-    console.log("✍️ Typing body...");
-    const editorBox = await page.$("div[role='textbox']");
-    if (editorBox)
-      await editorBox.type("This is a test post sent automatically.", {
-        delay: 40
-      });
-
-    console.log("✅ Test post completed!");
-
-    const successShot = path.join(
-      SCREENSHOT_DIR,
-      `test-success-${Date.now()}.png`
-    );
-    await page.screenshot({ path: successShot, fullPage: true });
-    console.log(`📸 Screenshot saved: ${successShot}`);
-  } catch (err) {
-    console.error("❌ Test post error:", err.message);
-
-    const failShot = path.join(
-      SCREENSHOT_DIR,
-      `test-fail-${Date.now()}.png`
-    );
-    await page.screenshot({ path: failShot, fullPage: true });
-    console.log(`📸 Fail screenshot saved: ${failShot}`);
-
-    process.exit(1);
-  } finally {
-    await browser.close();
-  }
+  await browser.close();
 }
 
 run();
