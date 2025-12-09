@@ -31,12 +31,40 @@ async function run() {
   const page = await context.newPage();
   await page.goto("https://medium.com/new-story", { waitUntil: "domcontentloaded" });
 
-  // Wait longer for the editor to appear
-  try {
-    await page.waitForSelector('div[role="textbox"]', { timeout: 30000 });
-    console.log("✅ Editor loaded, ready to post!");
-  } catch (err) {
-    console.warn("⚠ Editor not found, maybe Medium changed the DOM or a modal is blocking it.");
+  // Close possible modals
+  const modalSelectors = [
+    'button[aria-label="Close"]',
+    'button[aria-label="Dismiss"]',
+    'button:has-text("Skip for now")'
+  ];
+  for (const sel of modalSelectors) {
+    const modal = await page.$(sel);
+    if (modal) {
+      console.log(`⚡ Closing modal ${sel}`);
+      await modal.click();
+      await page.waitForTimeout(500); // wait a bit after closing
+    }
+  }
+
+  // Try multiple possible editor selectors
+  const editorSelectors = [
+    'div[role="textbox"]',
+    'div[data-placeholder="Title"]',
+    'textarea'
+  ];
+
+  let editorFound = false;
+  for (const sel of editorSelectors) {
+    try {
+      await page.waitForSelector(sel, { timeout: 15000 });
+      console.log(`✅ Editor found: ${sel}`);
+      editorFound = true;
+      break;
+    } catch {}
+  }
+
+  if (!editorFound) {
+    console.warn("❌ Could not find the editor, Medium DOM may have changed.");
   }
 
   await browser.close();
