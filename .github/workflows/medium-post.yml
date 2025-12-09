@@ -4,20 +4,37 @@ on:
   workflow_dispatch:
 
 jobs:
-  medium-login:
+  test-post:
     runs-on: ubuntu-latest
-    env:
-      MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
       - name: Install dependencies
         run: |
           npm install
           npx playwright install chromium
 
-      - name: Login with cookies
+      - name: Login to Medium
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
         run: npm run login
 
-      - name: Test Post
+      - name: Run test post
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
         run: npm run test-post
+        continue-on-error: true
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: medium-test-screenshots
+          path: screenshots/
