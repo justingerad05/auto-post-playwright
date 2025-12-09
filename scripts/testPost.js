@@ -1,45 +1,80 @@
 import { chromium } from "playwright";
 import fs from "fs";
-
-async function wait(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+import path from "path";
 
 async function run() {
-  console.log("Starting test post…");
+  console.log("🔵 Running test post…");
 
-  // Load merged login state
-  const state = "medium-state.json";
+  const cookiesBase64 = process.env.MEDIUM_COOKIES;
+  const storageBase64 = process.env.MEDIUM_STORAGE;
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ storageState: state });
+  if (!cookiesBase64 || !storageBase64) {
+    console.error("❌ MEDIUM_COOKIES or MEDIUM_STORAGE not found!");
+    process.exit(1);
+  }
+
+  let cookies, storage;
+  try {
+    cookies = JSON.parse(Buffer.from(cookiesBase64, "base64").toString());
+    storage = JSON.parse(Buffer.from(storageBase64, "base64").toString());
+  } catch (e) {
+    console.error("❌ Failed to parse base64 JSON:", e.message);
+    process.exit(1);
+  }
+
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext({
+    storageState: { cookies, origins: storage.origins || [] }
+  });
+
   const page = await context.newPage();
+  await page.goto("https://medium.com/new-story", { waitUntil: "networkidle" });
 
-  console.log("Opening Medium editor…");
-  await page.goto("https://medium.com/new-story", { timeout: 0 });
+  // Wait extra for Cloudflare
+  await page.waitForTimeout(8000);
 
-  // Cloudflare challenge bypass wait
-  console.log("Waiting for Cloudflare…");
-  await wait(8000);
+  // Close potential modals
+  const modalSelectors = [
+    'button[aria-label="Close"]',
+    'button[aria-label="Dismiss"]',
+    'button:has-text("Skip for now")',
+    'button:has-text("Not now")'
+  ];
+  for (const sel of modalSelectors) {
+    const modal = await page.$(sel);
+    if (modal) {
+      await modal.click();
+      await page.waitForTimeout(500);
+    }
+  }
 
-  // Fill test title
-  await page.waitForSelector('textarea[placeholder="Title"]', { timeout: 0 });
-  await page.fill('textarea[placeholder="Title"]', "🔥 Test Post From Playwright Automation");
+  // Editor selectors
+  const editorSelectors = [
+    'div[data-placeholder="Title"]',
+    'div[role="textbox"]',
+    'div[data-placeholder="Write here…"]',
+    'textarea'
+  ];
 
-  // Fill test body
-  await page.keyboard.press("Tab");
-  await page.keyboard.type("This is a test post created automatically using Playwright.");
+  let editorFound = false;
+  for (const sel of editorSelectors) {
+    try {
+      await page.waitForSelector(sel, { timeout: 15000 });
+      console.log(`✅ Editor found: ${sel}`);
+      editorFound = true;
+      break;
+    } catch {}
+  }
 
-  // Wait a little
-  await wait(2000);
+  if (!editorFound) {
+    console.warn("❌ Could not find the editor, Cloudflare may still block it.");
+    const screenshotDir = path.resolve(process.cwd(), "screenshots");
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+    const screenshotPath = path.join(screenshotDir, `medium-editor-fail-${Date.now()}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log(`📸 Screenshot saved: ${screenshotPath}`);
+  }
 
-  console.log("Opening publish menu…");
-  await page.click('button:has-text("Publish")');
-
-  await page.waitForSelector('button:has-text("Publish now")', { timeout: 0 });
-  await page.click('button:has-text("Publish now")');
-
-  console.log("✔ Test post published successfully!");
   await browser.close();
 }
 
