@@ -10,33 +10,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Cloudflared
+      - name: Start Chromium with Remote Debugging
+        run: |
+          echo "Starting Chromium..."
+          export DISPLAY=:99
+          chromium --headless --remote-debugging-address=0.0.0.0 --remote-debugging-port=9222 \
+            --no-sandbox --disable-gpu --user-data-dir=/home/runner/chrome-profile \
+            https://medium.com/m/signin &
+
+          # Wait for Chromium to boot and open debugging port
+          echo "Waiting for debug port..."
+          for i in {1..30}; do
+            if nc -z localhost 9222; then
+              echo "Chromium debug port is ready!"
+              break
+            fi
+            echo "Still waiting..."
+            sleep 1
+          done
+
+          if ! nc -z localhost 9222; then
+            echo "❌ Chromium did not open port 9222. Exiting."
+            exit 1
+          fi
+
+      - name: Install cloudflared
         run: |
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
       - name: Start Cloudflare Tunnel
         run: |
-          echo "Starting tunnel..."
+          echo "Starting Cloudflare Tunnel..."
           cloudflared tunnel --url http://localhost:9222 --no-autoupdate --logfile tunnel.log > tunnel_output.log 2>&1 &
-          sleep 5
+          sleep 8
           echo "=========== TUNNEL URL BELOW ==========="
-          grep -o "https://[a-zA-Z0-9.-]*trycloudflare.com" tunnel_output.log || true
+          grep -o "https://[a-zA-Z0-9.-]*trycloudflare.com" tunnel_output.log || echo "❌ No tunnel URL found yet."
           echo "========================================"
 
-      - name: Start chromium with debugging port
+      - name: Keep Alive
         run: |
-          export DISPLAY=:99
-          chromium --remote-debugging-port=9222 --no-sandbox \
-            --user-data-dir=/home/runner/chrome-profile \
-            https://medium.com/m/signin &
-
-          sleep 5
-
-      - name: Keep Action alive
-        run: |
-          echo "Browser running. Do NOT close this Action."
-          echo "Leave this tab open while you log in through the tunnel URL."
+          echo "Browser live! Use tunnel URL above to log in."
           while true; do
             echo "Still running..."
             sleep 30
