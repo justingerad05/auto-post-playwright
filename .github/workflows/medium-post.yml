@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -19,14 +19,19 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright browsers
-        run: npx playwright install
+      - name: Write Cookies & Storage from Secrets
+        run: |
+          echo "${{ secrets.MEDIUM_COOKIES }}" > cookies.json
+          echo "${{ secrets.MEDIUM_STORAGE }}" > storage.json
 
-      - name: Load Medium Profile (cookies + storage)
-        run: npm run login
-        env:
-          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
-          MEDIUM_STORAGE: ${{ secrets.MEDIUM_STORAGE }}
+      - name: Run Medium Login/Profile Loader
+        run: node scripts/loadProfile.js
 
-      - name: Perform Test Post
-        run: npm run test-post
+      - name: Run Medium Auto Post
+        run: node index.js
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f cookies.json
+          rm -f storage.json
