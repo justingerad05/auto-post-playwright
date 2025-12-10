@@ -8,30 +8,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1️⃣ Checkout the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 20
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm install
 
-      - name: Write Cookies & Storage from Secrets
-        run: |
-          echo "${{ secrets.MEDIUM_COOKIES }}" > cookies.json
-          echo "${{ secrets.MEDIUM_STORAGE }}" > storage.json
+      # 4️⃣ Install Playwright browsers
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
 
-      - name: Run Medium Login/Profile Loader
-        run: node scripts/loadProfile.js
+      # 5️⃣ Run login script
+      - name: Login to Medium
+        run: npm run login
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
-      - name: Run Medium Auto Post
-        run: node index.js
+      # 6️⃣ Run test post script
+      - name: Test post on Medium
+        run: npm run test-post
+        env:
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
 
-      - name: Cleanup
-        if: always()
-        run: |
-          rm -f cookies.json
-          rm -f storage.json
+      # 7️⃣ Optional: Run postArticle script
+      # Uncomment if you want to auto-fill an article
+      #- name: Post article on Medium
+      #  run: npm run post-article
+      #  env:
+      #    MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+
+      # 8️⃣ Upload screenshots as artifacts (for debugging)
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-screenshots
+          path: screenshots/
