@@ -1,0 +1,48 @@
+name: Medium Auto Post (CI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  medium-login:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright system dependencies + browsers
+        run: |
+          # attempt to auto-install OS deps for Playwright (works on ubuntu runners)
+          sudo npx playwright install-deps || true
+          npm install
+          # install browsers (chromium only for speed)
+          npx playwright install chromium --with-deps
+
+      - name: Ensure screenshots folder exists
+        run: mkdir -p screenshots
+
+      - name: Run login + test post
+        env:
+          # Put your JSON directly in these secrets (not base64)
+          MEDIUM_COOKIES: ${{ secrets.MEDIUM_COOKIES }}
+          MEDIUM_STORAGE: ${{ secrets.MEDIUM_STORAGE }}
+          # optional: increase debug verbosity
+          DEBUG_PLAYWRIGHT: "1"
+        run: |
+          # run the login loader (will validate cookies/storage)
+          node loadProfile.js
+          # run the test post which will try to open the editor and save screenshots on failure
+          node testPost.js
+
+      - name: Upload screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-screenshots
+          path: screenshots/
