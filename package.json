@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "login": "node loadProfile.js",
-    "test-post": "node testPost.js"
+    "login": "node scripts/loadProfile.js",
+    "test-post": "node scripts/testPost.js",
+    "post-article": "node scripts/postArticle.js"
   },
   "dependencies": {
     "playwright": "^1.56.1"
