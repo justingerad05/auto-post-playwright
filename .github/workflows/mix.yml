@@ -1,0 +1,52 @@
+name: Mix Auto Post
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download profile ZIP from private repo
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          PRIVATE_OWNER: ${{ secrets.PRIVATE_OWNER }}
+          PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}
+          PRIVATE_ASSET_ID: ${{ secrets.PRIVATE_ASSET_ID }}
+        run: |
+          curl -L \
+            -H "Authorization: token $PRIVATE_REPO_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            https://api.github.com/repos/$PRIVATE_OWNER/$PRIVATE_REPO/releases/assets/$PRIVATE_ASSET_ID \
+            -o mix-profile.zip
+
+          unzip mix-profile.zip -d profile
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install playwright
+
+      - name: Install browsers
+        run: npx playwright install chromium
+
+      - name: Run Mix auto post
+        env:
+          PROFILE_PATH: ./profile
+          POST_TITLE: "Test Title from GitHub"
+          POST_BODY: "This is an automation test."
+          HTTP_PROXY: ${{ secrets.HTTP_PROXY }}
+        run: node mix-post.js
+
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug
+          path: debug
